@@ -1,6 +1,8 @@
-# GitButler for VS Code
+# GitButler Stacks (Unofficial)
 
 View GitButler stacks and commit changes from VS Code, using the [`but` CLI](https://docs.gitbutler.com/cli-overview).
+
+This is an unofficial extension. It isn't affiliated with or endorsed by GitButler, Inc. The GitButler name and logo belong to GitButler, Inc.
 
 ## Features
 
@@ -49,3 +51,7 @@ npm test
 Press F5 to launch an Extension Development Host with the debugger attached. Commands the extension runs are logged to the **GitButler** output channel.
 
 See `CLAUDE.md` for how the extension works, the test setup, and debugging notes.
+
+## License
+
+[MIT](LICENSE)

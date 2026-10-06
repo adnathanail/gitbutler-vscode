@@ -1,6 +1,6 @@
-# GitButler for VS Code
+# GitButler Stacks (Unofficial)
 
-A VS Code extension that shows GitButler stacks and commits changes by calling the `but` CLI. User-facing documentation is in `README.md`.
+An unofficial VS Code extension that shows GitButler stacks and commits changes by calling the `but` CLI. User-facing documentation is in `README.md`.
 
 ## Commands
 
@@ -53,6 +53,7 @@ The types in `src/but.ts` were written against `but` 0.22.3. Behaviour of `but` 
 
 ## Design decisions
 
+- **The extension is presented as unofficial.** GitButler's licence gives no rights to its trademarks or product names, so the display name and description say "Unofficial", the README says it isn't affiliated with GitButler, Inc., and GitButler's logo shouldn't be used as the extension's own Marketplace icon. Using the name to describe compatibility, and the toolbar icon for opening the GitButler app, refer to GitButler rather than presenting the extension as theirs.
 - **Command and setting IDs use the `gitbutlerVscode.` prefix.** `gitbutler.*` clashed with the GitButler for IDE extension (`BartInTheField.gitbutler-for-ide`), and VS Code refused to register the duplicate commands. The source control ID is `gitbutlerVscode` and the revision URI scheme is `gitbutler-vscode-rev` for the same reason. A manifest test enforces the prefix.
 - **`gitbutlerVscode.openChange` takes a single object argument** (`OpenChangeTarget`). The Source Control panel appends a `preserveFocus` boolean to resource command arguments, which was once read as a commit ID.
 - **Old file versions are served by a `FileSystemProvider`, not a `TextDocumentContentProvider`.** Non-text editors such as the image preview can only read through the file system API, and content providers caused "ModelService: Cannot add model because it already exists" errors. `git show` output is kept as raw bytes so binary files aren't corrupted.
