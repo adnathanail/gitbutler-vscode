@@ -205,6 +205,8 @@ export class Repository implements vscode.Disposable {
       change,
       stack,
       resourceUri,
+      // Read by menus as `scmResourceState`.
+      contextValue: change.changeType,
       command: {
         command: "gitbutlerVscode.openChange",
         title: "Open Changes",

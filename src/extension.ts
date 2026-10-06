@@ -116,6 +116,17 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     });
   };
 
+  /** Opens the working tree file at the path of `uri`, which may be at a revision. */
+  const openWorkingFile = async (uri: vscode.Uri, options: vscode.TextDocumentShowOptions) => {
+    const file = vscode.Uri.file(uri.fsPath);
+    try {
+      await vscode.workspace.fs.stat(file);
+    } catch {
+      return showError(`${vscode.workspace.asRelativePath(file)} doesn't exist in the working tree.`);
+    }
+    await vscode.commands.executeCommand("vscode.open", file, options);
+  };
+
   context.subscriptions.push(
     log,
     errorEmitter,
@@ -150,26 +161,31 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }),
 
-    // Invoked from a diff editor's title bar (with the URI of the diff's right side), or the command
-    // palette (with nothing, for the active diff). Opens the working tree file, keeping the cursor.
-    vscode.commands.registerCommand("gitbutlerVscode.openFile", async (arg?: unknown) => {
+    // Invoked from a diff editor's title bar (with the URI of the diff's right side), the Source
+    // Control panel (with the selected changes), or the command palette (with nothing, for the
+    // active diff). Opens working tree files. From a diff, keeps the cursor position.
+    vscode.commands.registerCommand("gitbutlerVscode.openFile", async (...args: unknown[]) => {
+      const resources = args.filter((a): a is ChangeResource => a instanceof Object && "repository" in a);
+      if (resources.length > 0) {
+        // Opened in preview mode, each file would replace the one before.
+        const preview = resources.length === 1 ? undefined : false;
+        for (const resource of resources) {
+          await openWorkingFile(resource.resourceUri, { preview });
+        }
+        return;
+      }
       const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+      const [arg] = args;
       const uri = arg instanceof vscode.Uri ? arg : input instanceof vscode.TabInputTextDiff ? input.modified : undefined;
       if (!uri) {
         return;
       }
-      const file = vscode.Uri.file(uri.fsPath);
-      try {
-        await vscode.workspace.fs.stat(file);
-      } catch {
-        return showError(`${vscode.workspace.asRelativePath(file)} doesn't exist in the working tree.`);
-      }
       const editor = vscode.window.activeTextEditor;
       const fromDiff = editor?.document.uri.toString() === uri.toString();
-      await vscode.commands.executeCommand("vscode.open", file, {
+      await openWorkingFile(uri, {
         selection: fromDiff ? editor.selection : undefined,
         viewColumn: fromDiff ? editor.viewColumn : undefined,
-      } satisfies vscode.TextDocumentShowOptions);
+      });
     }),
 
     // Invoked from the SCM title bar (with the SourceControl), the Stacks view title bar or the
