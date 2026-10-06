@@ -67,16 +67,13 @@ export function run(
   args: string[],
   cwd: string,
   log: vscode.OutputChannel,
-  { logErrors = true } = {},
 ): Promise<string> {
   log.appendLine(`> ${command} ${args.join(" ")}`);
   return new Promise((resolve, reject) => {
     execFile(command, args, { cwd, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) {
         const message = stderr.trim() || err.message;
-        if (logErrors) {
-          log.appendLine(message);
-        }
+        log.appendLine(message);
         reject(new CommandError(message));
       } else {
         resolve(stdout);

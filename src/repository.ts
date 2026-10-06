@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { But, ChangeType, FileChange, Stack, Status } from "./but";
-import { RevisionContentProvider } from "./content";
+import { RevisionFileSystemProvider } from "./content";
 
 /** An uncommitted change shown in the Source Control panel. */
 export interface ChangeResource extends vscode.SourceControlResourceState {
@@ -42,6 +42,8 @@ export class Repository implements vscode.Disposable {
 
   status?: Status;
   error?: string;
+  /** Identifies the commits HEAD (the workspace commit) was built from, as of the last refresh. */
+  private headCommits?: string;
 
   private refreshTimer?: NodeJS.Timeout;
   private refreshing?: Promise<void>;
@@ -50,6 +52,7 @@ export class Repository implements vscode.Disposable {
   constructor(
     readonly root: string,
     private readonly log: vscode.OutputChannel,
+    private readonly revisions: RevisionFileSystemProvider,
   ) {
     this.but = new But(root, log);
 
@@ -66,7 +69,7 @@ export class Repository implements vscode.Disposable {
           return undefined;
         }
         // HEAD is the GitButler workspace commit, which merges every applied stack.
-        return RevisionContentProvider.uri(root, path.relative(root, uri.fsPath), "HEAD");
+        return RevisionFileSystemProvider.uri(root, path.relative(root, uri.fsPath), "HEAD");
       },
     };
 
@@ -115,6 +118,7 @@ export class Repository implements vscode.Disposable {
       } catch (err) {
         this.error = err instanceof Error ? err.message : String(err);
       }
+      this.updateHead();
       this.updateResources();
       this.onDidChangeEmitter.fire();
     })();
@@ -126,6 +130,19 @@ export class Repository implements vscode.Disposable {
     if (this.refreshQueued) {
       this.refreshQueued = false;
       await this.refresh();
+    }
+  }
+
+  /** Makes editors showing files at HEAD reload them when the applied commits change. */
+  private updateHead(): void {
+    if (!this.status) {
+      return;
+    }
+    const branches = this.status.stacks.map((s) => s.branches.map((b) => b.commits.map((c) => c.commitId)));
+    const headCommits = JSON.stringify([this.status.mergeBase.commitId, branches]);
+    if (headCommits !== this.headCommits) {
+      this.headCommits = headCommits;
+      this.revisions.repositoryChanged(this.root);
     }
   }
 
@@ -181,9 +198,9 @@ export class Repository implements vscode.Disposable {
   /** Opens a diff of an uncommitted change against the workspace commit. */
   async openUncommittedChange(change: FileChange, options?: vscode.TextDocumentShowOptions): Promise<void> {
     const fileUri = vscode.Uri.file(path.join(this.root, change.filePath));
-    const left = RevisionContentProvider.uri(this.root, change.filePath, change.changeType === "added" ? "" : "HEAD");
+    const left = RevisionFileSystemProvider.uri(this.root, change.filePath, change.changeType === "added" ? "" : "HEAD");
     const right =
-      change.changeType === "removed" ? RevisionContentProvider.uri(this.root, change.filePath, "") : fileUri;
+      change.changeType === "removed" ? RevisionFileSystemProvider.uri(this.root, change.filePath, "") : fileUri;
     await vscode.commands.executeCommand(
       "vscode.diff",
       left,
@@ -199,12 +216,12 @@ export class Repository implements vscode.Disposable {
     change: FileChange,
     options?: vscode.TextDocumentShowOptions,
   ): Promise<void> {
-    const left = RevisionContentProvider.uri(
+    const left = RevisionFileSystemProvider.uri(
       this.root,
       change.filePath,
       change.changeType === "added" ? "" : `${commitId}^`,
     );
-    const right = RevisionContentProvider.uri(
+    const right = RevisionFileSystemProvider.uri(
       this.root,
       change.filePath,
       change.changeType === "removed" ? "" : commitId,

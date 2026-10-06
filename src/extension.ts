@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { FileChange, run, Stack, Status } from "./but";
-import { RevisionContentProvider } from "./content";
+import { RevisionFileSystemProvider } from "./content";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
 import { behindDescription, StacksProvider } from "./stacksView";
@@ -16,12 +16,15 @@ export interface ExtensionApi {
   readonly repositories: () => Repository[];
   /** Fires with the full message of every error shown to the user. */
   readonly onDidShowError: vscode.Event<string>;
+  readonly revisions: RevisionFileSystemProvider;
 }
 
 export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const log = vscode.window.createOutputChannel("GitButler");
   const stacks = new StacksProvider(() => repositories);
   const stacksView = vscode.window.createTreeView("gitbutlerVscode.stacks", { treeDataProvider: stacks });
+
+  const revisions = new RevisionFileSystemProvider();
 
   const onRepositoryChange = () => {
     stacks.refresh();
@@ -44,7 +47,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     const added = [...found.keys()]
       .filter((root) => !kept.some((r) => r.root === root))
       .map((root) => {
-        const repository = new Repository(root, log);
+        const repository = new Repository(root, log, revisions);
         repository.onDidChange(onRepositoryChange);
         return repository;
       });
@@ -114,10 +117,11 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     log,
     errorEmitter,
     stacksView,
-    vscode.workspace.registerTextDocumentContentProvider(
-      RevisionContentProvider.scheme,
-      new RevisionContentProvider(log),
-    ),
+    revisions,
+    vscode.workspace.registerFileSystemProvider(RevisionFileSystemProvider.scheme, revisions, {
+      isReadonly: true,
+      isCaseSensitive: true,
+    }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void discover()),
     headWatcher,
     { dispose: () => clearTimeout(headTimer) },
@@ -179,7 +183,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     }),
   );
 
-  return { ready: discover(), repositories: () => repositories, onDidShowError: errorEmitter.event };
+  return { ready: discover(), repositories: () => repositories, onDidShowError: errorEmitter.event, revisions };
 }
 
 export function deactivate(): void {}

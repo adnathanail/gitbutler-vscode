@@ -39,7 +39,7 @@ export class TestRepo {
     return path.join(this.root, relative);
   }
 
-  write(relative: string, content: string): void {
+  write(relative: string, content: string | Uint8Array): void {
     fs.mkdirSync(path.dirname(this.path(relative)), { recursive: true });
     fs.writeFileSync(this.path(relative), content);
   }
@@ -61,14 +61,15 @@ export class TestRepo {
   }
 
   /** Writes a file and commits it with `but`, on the given branch (created if needed). */
-  commit(relative: string, content: string, message: string, branch: string): void {
+  commit(relative: string, content: string | Uint8Array, message: string, branch: string): void {
     this.write(relative, content);
     this.but("commit", "--json", "-m", message, "--branch", branch, "--", relative);
   }
 
   /** A loaded extension Repository for this repo. Disposed by `dispose()`. */
   async repository(): Promise<Repository> {
-    const repository = new Repository(this.root, log);
+    const { revisions } = await activate();
+    const repository = new Repository(this.root, log, revisions);
     this.repositories.push(repository);
     await repository.refresh();
     return repository;
