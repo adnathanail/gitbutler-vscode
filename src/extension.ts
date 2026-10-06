@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
+import { ChangeDecorationProvider } from "./decorations";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
 import { behindDescription, StacksProvider } from "./stacksView";
@@ -25,9 +26,11 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const stacksView = vscode.window.createTreeView("gitbutlerVscode.stacks", { treeDataProvider: stacks });
 
   const revisions = new RevisionFileSystemProvider();
+  const decorations = new ChangeDecorationProvider(() => repositories);
 
   const onRepositoryChange = () => {
     stacks.refresh();
+    decorations.refresh();
     stacksView.description = repositories.length === 1 ? behindDescription(repositories[0]) : undefined;
   };
 
@@ -118,6 +121,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     errorEmitter,
     stacksView,
     revisions,
+    decorations,
+    vscode.window.registerFileDecorationProvider(decorations),
     vscode.workspace.registerFileSystemProvider(RevisionFileSystemProvider.scheme, revisions, {
       isReadonly: true,
       isCaseSensitive: true,
