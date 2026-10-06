@@ -46,10 +46,10 @@ export class Repository implements vscode.Disposable {
   ) {
     this.but = new But(root, log);
 
-    this.sourceControl = vscode.scm.createSourceControl("gitbutler", "GitButler", vscode.Uri.file(root));
+    this.sourceControl = vscode.scm.createSourceControl("gitbutlerVscode", "GitButler", vscode.Uri.file(root));
     this.sourceControl.inputBox.placeholder = "Message (⌘Enter to commit all changes)";
     this.sourceControl.acceptInputCommand = {
-      command: "gitbutler.commitAll",
+      command: "gitbutlerVscode.commitAll",
       title: "Commit All Changes",
       arguments: [this],
     };
@@ -159,7 +159,7 @@ export class Repository implements vscode.Disposable {
       stack,
       resourceUri,
       command: {
-        command: "gitbutler.openChange",
+        command: "gitbutlerVscode.openChange",
         title: "Open Changes",
         arguments: [this, change],
       },

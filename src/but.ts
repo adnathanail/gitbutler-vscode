@@ -89,7 +89,7 @@ export class But {
   ) {}
 
   private run(args: string[]): Promise<string> {
-    const butPath = vscode.workspace.getConfiguration("gitbutler").get<string>("butPath") || "but";
+    const butPath = vscode.workspace.getConfiguration("gitbutlerVscode").get<string>("butPath") || "but";
     return run(butPath, args, this.root, this.log);
   }
 

@@ -13,7 +13,7 @@ When several stacks are applied, committing asks which branch to commit to, or o
 
 ## Requirements
 
-- `but` on your `PATH`, or set `gitbutler.butPath`.
+- `but` on your `PATH`, or set `gitbutlerVscode.butPath`.
 - A repository on the `gitbutler/workspace` branch (run `but setup` first).
 
 The built-in Git extension still shows the repository too. To hide it for GitButler repositories, set `"git.enabled": false` in the workspace settings.

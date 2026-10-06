@@ -5,12 +5,12 @@ import { run } from "./but";
 /**
  * Serves file contents at a git revision, for the left (or right) side of diffs.
  *
- * URIs look like `gitbutler-rev:/abs/path/to/file?{"root":...,"ref":...}`. An empty ref, or a path
+ * URIs look like `gitbutler-vscode-rev:/abs/path/to/file?{"root":...,"ref":...}`. An empty ref, or a path
  * that doesn't exist at the ref, gives an empty document, which is what added and removed files
  * need on one side of their diff.
  */
 export class RevisionContentProvider implements vscode.TextDocumentContentProvider {
-  static readonly scheme = "gitbutler-rev";
+  static readonly scheme = "gitbutler-vscode-rev";
 
   constructor(private readonly log: vscode.OutputChannel) {}
 

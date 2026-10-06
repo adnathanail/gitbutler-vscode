@@ -142,7 +142,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node> {
         item.description = `${changeLetter(change.changeType)}${dir === "." ? "" : `  ${dir}`}`;
         item.tooltip = `${change.filePath} (${change.changeType})`;
         item.command = {
-          command: "gitbutler.openChange",
+          command: "gitbutlerVscode.openChange",
           title: "Open Changes",
           arguments: [repository, change, commit.commitId],
         };

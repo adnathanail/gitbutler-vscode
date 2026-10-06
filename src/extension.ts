@@ -11,7 +11,7 @@ let repositories: Repository[] = [];
 export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel("GitButler");
   const stacks = new StacksProvider(() => repositories);
-  const stacksView = vscode.window.createTreeView("gitbutler.stacks", { treeDataProvider: stacks });
+  const stacksView = vscode.window.createTreeView("gitbutlerVscode.stacks", { treeDataProvider: stacks });
 
   const onRepositoryChange = () => {
     stacks.refresh();
@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext): void {
       repository.onDidChange(onRepositoryChange);
       return repository;
     });
-    await vscode.commands.executeCommand("setContext", "gitbutler.hasRepository", repositories.length > 0);
+    await vscode.commands.executeCommand("setContext", "gitbutlerVscode.hasRepository", repositories.length > 0);
     onRepositoryChange();
     await Promise.all(repositories.map((r) => r.refresh()));
   };
@@ -49,11 +49,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeWorkspaceFolders(() => void discover()),
     { dispose: () => repositories.forEach((r) => r.dispose()) },
 
-    vscode.commands.registerCommand("gitbutler.refresh", async () => {
+    vscode.commands.registerCommand("gitbutlerVscode.refresh", async () => {
       await Promise.all(repositories.map((r) => r.refresh()));
     }),
 
-    vscode.commands.registerCommand("gitbutler.openChange", async (repository: Repository, change: FileChange, commitId?: string) => {
+    vscode.commands.registerCommand("gitbutlerVscode.openChange", async (repository: Repository, change: FileChange, commitId?: string) => {
       try {
         if (commitId) {
           await repository.openCommittedChange(commitId, change);
@@ -66,7 +66,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     // Invoked from the SCM title bar (with the SourceControl), or the input box (with the Repository).
-    vscode.commands.registerCommand("gitbutler.commitAll", async (arg?: Repository | vscode.SourceControl) => {
+    vscode.commands.registerCommand("gitbutlerVscode.commitAll", async (arg?: Repository | vscode.SourceControl) => {
       const repository = await resolveRepository(arg);
       if (!repository) {
         return;
@@ -88,7 +88,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     // Invoked from the context menu on one or more selected changes in the Source Control panel.
-    vscode.commands.registerCommand("gitbutler.commitSelected", async (...selected: ChangeResource[]) => {
+    vscode.commands.registerCommand("gitbutlerVscode.commitSelected", async (...selected: ChangeResource[]) => {
       const resources = selected.filter((r) => r?.repository);
       if (resources.length === 0) {
         return;

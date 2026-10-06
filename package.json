@@ -20,7 +20,7 @@
     "configuration": {
       "title": "GitButler",
       "properties": {
-        "gitbutler.butPath": {
+        "gitbutlerVscode.butPath": {
           "type": "string",
           "default": "but",
           "description": "Path to the GitButler `but` CLI executable."
@@ -29,25 +29,25 @@
     },
     "commands": [
       {
-        "command": "gitbutler.refresh",
+        "command": "gitbutlerVscode.refresh",
         "title": "Refresh",
         "category": "GitButler",
         "icon": "$(refresh)"
       },
       {
-        "command": "gitbutler.commitAll",
+        "command": "gitbutlerVscode.commitAll",
         "title": "Commit All Changes",
         "category": "GitButler",
         "icon": "$(check)"
       },
       {
-        "command": "gitbutler.commitSelected",
+        "command": "gitbutlerVscode.commitSelected",
         "title": "Commit Selected Changes",
         "category": "GitButler",
         "icon": "$(check)"
       },
       {
-        "command": "gitbutler.openChange",
+        "command": "gitbutlerVscode.openChange",
         "title": "Open Changes",
         "category": "GitButler"
       }
@@ -55,51 +55,51 @@
     "views": {
       "scm": [
         {
-          "id": "gitbutler.stacks",
+          "id": "gitbutlerVscode.stacks",
           "name": "GitButler Stacks",
-          "when": "gitbutler.hasRepository"
+          "when": "gitbutlerVscode.hasRepository"
         }
       ]
     },
     "menus": {
       "commandPalette": [
         {
-          "command": "gitbutler.commitSelected",
+          "command": "gitbutlerVscode.commitSelected",
           "when": "false"
         },
         {
-          "command": "gitbutler.openChange",
+          "command": "gitbutlerVscode.openChange",
           "when": "false"
         }
       ],
       "view/title": [
         {
-          "command": "gitbutler.refresh",
-          "when": "view == gitbutler.stacks",
+          "command": "gitbutlerVscode.refresh",
+          "when": "view == gitbutlerVscode.stacks",
           "group": "navigation"
         }
       ],
       "scm/title": [
         {
-          "command": "gitbutler.commitAll",
-          "when": "scmProvider == gitbutler",
+          "command": "gitbutlerVscode.commitAll",
+          "when": "scmProvider == gitbutlerVscode",
           "group": "navigation"
         },
         {
-          "command": "gitbutler.refresh",
-          "when": "scmProvider == gitbutler",
+          "command": "gitbutlerVscode.refresh",
+          "when": "scmProvider == gitbutlerVscode",
           "group": "navigation"
         }
       ],
       "scm/resourceState/context": [
         {
-          "command": "gitbutler.commitSelected",
-          "when": "scmProvider == gitbutler",
+          "command": "gitbutlerVscode.commitSelected",
+          "when": "scmProvider == gitbutlerVscode",
           "group": "inline"
         },
         {
-          "command": "gitbutler.commitSelected",
-          "when": "scmProvider == gitbutler",
+          "command": "gitbutlerVscode.commitSelected",
+          "when": "scmProvider == gitbutlerVscode",
           "group": "1_commit"
         }
       ]
