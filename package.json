@@ -71,6 +71,7 @@
         {
           "id": "gitbutlerVscode.stacks",
           "name": "GitButler Stacks",
+          "icon": "resources/gitbutler-light.svg",
           "when": "gitbutlerVscode.hasRepository"
         }
       ]
