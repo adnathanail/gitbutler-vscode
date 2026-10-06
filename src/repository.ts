@@ -3,12 +3,16 @@ import * as vscode from "vscode";
 import { But, ChangeType, FileChange, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 
-/** An uncommitted change shown in the Source Control panel. */
-export interface ChangeResource extends vscode.SourceControlResourceState {
-  readonly repository: Repository;
+/** An uncommitted change. */
+export interface UncommittedChange {
   readonly change: FileChange;
   /** The stack the change is assigned to, if any. */
   readonly stack?: Stack;
+}
+
+/** An uncommitted change shown in the Source Control panel. */
+export interface ChangeResource extends vscode.SourceControlResourceState, UncommittedChange {
+  readonly repository: Repository;
 }
 
 /** Argument to the `gitbutlerVscode.openChange` command. Without a commit, opens an uncommitted change. */
@@ -34,6 +38,7 @@ export function changeLetter(type: ChangeType): string {
 export class Repository implements vscode.Disposable {
   readonly but: But;
   readonly sourceControl: vscode.SourceControl;
+  readonly stagedGroup: vscode.SourceControlResourceGroup;
   readonly unassignedGroup: vscode.SourceControlResourceGroup;
   private readonly stackGroups = new Map<string, vscode.SourceControlResourceGroup>();
   private readonly disposables: vscode.Disposable[] = [];
@@ -42,6 +47,11 @@ export class Repository implements vscode.Disposable {
 
   status?: Status;
   error?: string;
+  /**
+   * Paths of the staged changes, which committing is limited to. Kept by the extension, since
+   * GitButler has no staging area.
+   */
+  private readonly staged = new Set<string>();
   /** Identifies the commits HEAD (the workspace commit) was built from, as of the last refresh. */
   private headCommits?: string;
 
@@ -57,12 +67,12 @@ export class Repository implements vscode.Disposable {
     this.but = new But(root, log);
 
     this.sourceControl = vscode.scm.createSourceControl("gitbutlerVscode", "GitButler", vscode.Uri.file(root));
-    this.sourceControl.inputBox.placeholder = "Message (⌘Enter to commit all changes)";
     this.sourceControl.acceptInputCommand = {
-      command: "gitbutlerVscode.commitAll",
-      title: "Commit All Changes",
+      command: "gitbutlerVscode.commit",
+      title: "Commit",
       arguments: [this],
     };
+    this.sourceControl.inputBox.placeholder = "Message (⌘Enter to commit all changes)";
     this.sourceControl.quickDiffProvider = {
       provideOriginalResource: (uri) => {
         if (uri.scheme !== "file") {
@@ -73,6 +83,9 @@ export class Repository implements vscode.Disposable {
       },
     };
 
+    // Groups are shown in the order they're created.
+    this.stagedGroup = this.sourceControl.createResourceGroup("staged", "Staged Changes");
+    this.stagedGroup.hideWhenEmpty = true;
     this.unassignedGroup = this.sourceControl.createResourceGroup("unassigned", "Uncommitted Changes");
 
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, "**"));
@@ -87,6 +100,7 @@ export class Repository implements vscode.Disposable {
 
     this.disposables.push(
       this.sourceControl,
+      this.stagedGroup,
       this.unassignedGroup,
       watcher,
       this.onDidChangeEmitter,
@@ -97,6 +111,35 @@ export class Repository implements vscode.Disposable {
 
   get name(): string {
     return path.basename(this.root);
+  }
+
+  /** Uncommitted changes, unassigned ones first, then each stack's. */
+  get changes(): UncommittedChange[] {
+    return [
+      ...(this.status?.uncommittedChanges ?? []).map((change) => ({ change })),
+      ...(this.status?.stacks ?? []).flatMap((stack) => stack.assignedChanges.map((change) => ({ change, stack }))),
+    ];
+  }
+
+  /** Paths of the staged uncommitted changes. */
+  get stagedPaths(): string[] {
+    return this.changes.map((c) => c.change.filePath).filter((p) => this.staged.has(p));
+  }
+
+  setStaged(filePaths: string[], staged: boolean): void {
+    for (const filePath of filePaths) {
+      if (staged) {
+        this.staged.add(filePath);
+      } else {
+        this.staged.delete(filePath);
+      }
+    }
+    this.updateResources();
+    this.onDidChangeEmitter.fire();
+  }
+
+  uri(change: FileChange): vscode.Uri {
+    return vscode.Uri.file(path.join(this.root, change.filePath));
   }
 
   /** Coalesces bursts of file events into a single refresh. */
@@ -148,11 +191,21 @@ export class Repository implements vscode.Disposable {
   }
 
   private updateResources(): void {
-    const status = this.status;
-    this.unassignedGroup.resourceStates = (status?.uncommittedChanges ?? []).map((c) => this.resource(c));
+    const changes = this.changes;
+    const paths = new Set(changes.map((c) => c.change.filePath));
+    for (const filePath of this.staged) {
+      if (!paths.has(filePath)) {
+        this.staged.delete(filePath);
+      }
+    }
+    const isStaged = (c: UncommittedChange) => this.staged.has(c.change.filePath);
+
+    this.stagedGroup.resourceStates = changes.filter(isStaged).map((c) => this.resource(c));
+    const unstaged = changes.filter((c) => !isStaged(c));
+    this.unassignedGroup.resourceStates = unstaged.filter((c) => !c.stack).map((c) => this.resource(c));
 
     const seen = new Set<string>();
-    for (const stack of status?.stacks ?? []) {
+    for (const stack of this.status?.stacks ?? []) {
       // Stack CLI IDs are positional, so key groups by the stack's bottom branch, which is stable.
       const key = stack.branches[stack.branches.length - 1]?.name ?? stack.cliId;
       seen.add(key);
@@ -163,7 +216,7 @@ export class Repository implements vscode.Disposable {
         this.stackGroups.set(key, group);
       }
       group.label = `Assigned to ${stack.branches[0]?.name ?? key}`;
-      group.resourceStates = stack.assignedChanges.map((c) => this.resource(c, stack));
+      group.resourceStates = unstaged.filter((c) => c.stack === stack).map((c) => this.resource(c));
     }
     for (const [key, group] of this.stackGroups) {
       if (!seen.has(key)) {
@@ -172,8 +225,8 @@ export class Repository implements vscode.Disposable {
       }
     }
 
-    const assigned = status?.stacks.reduce((n, s) => n + s.assignedChanges.length, 0) ?? 0;
-    this.sourceControl.count = (status?.uncommittedChanges.length ?? 0) + assigned;
+    this.sourceControl.count = changes.length;
+    this.sourceControl.inputBox.placeholder = `Message (⌘Enter to commit ${this.staged.size > 0 ? "staged" : "all"} changes)`;
   }
 
   /**
@@ -198,13 +251,12 @@ export class Repository implements vscode.Disposable {
     this.sourceControl.statusBarCommands = [{ ...command, title, tooltip: `${tooltip}\n\nClick to open in GitButler` }];
   }
 
-  private resource(change: FileChange, stack?: Stack): ChangeResource {
-    const resourceUri = vscode.Uri.file(path.join(this.root, change.filePath));
+  private resource({ change, stack }: UncommittedChange): ChangeResource {
     return {
       repository: this,
       change,
       stack,
-      resourceUri,
+      resourceUri: this.uri(change),
       // Read by menus as `scmResourceState`.
       contextValue: change.changeType,
       command: {
@@ -222,7 +274,7 @@ export class Repository implements vscode.Disposable {
 
   /** Opens a diff of an uncommitted change against the workspace commit. */
   async openUncommittedChange(change: FileChange, options?: vscode.TextDocumentShowOptions): Promise<void> {
-    const fileUri = vscode.Uri.file(path.join(this.root, change.filePath));
+    const fileUri = this.uri(change);
     const left = RevisionFileSystemProvider.uri(this.root, change.filePath, change.changeType === "added" ? "" : "HEAD");
     const right =
       change.changeType === "removed" ? RevisionFileSystemProvider.uri(this.root, change.filePath, "") : fileUri;

@@ -1,10 +1,11 @@
+import * as assert from "node:assert";
 import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import type { Status } from "../but";
 import type { ExtensionApi } from "../extension";
-import { Repository } from "../repository";
+import { ChangeResource, Repository } from "../repository";
 
 const EXTENSION_ID = "adnathanail.gitbutler-vscode";
 
@@ -95,6 +96,18 @@ export function useTestRepo(): () => TestRepo {
     await vscode.commands.executeCommand("workbench.action.closeAllEditors");
   });
   return () => repo!;
+}
+
+/** The change at a repo-relative path in a Source Control panel group. */
+export function resource(group: vscode.SourceControlResourceGroup, filePath: string): ChangeResource {
+  const found = (group.resourceStates as ChangeResource[]).find((r) => r.change.filePath === filePath);
+  assert.ok(found, `${filePath} isn't in ${group.label}`);
+  return found;
+}
+
+/** Repo-relative paths of the changes in a Source Control panel group. */
+export function paths(group: vscode.SourceControlResourceGroup): string[] {
+  return (group.resourceStates as ChangeResource[]).map((r) => r.change.filePath);
 }
 
 /** Collects errors the extension shows to the user while the test runs. */

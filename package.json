@@ -44,26 +44,26 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "gitbutlerVscode.commitAll",
-        "title": "Commit All Changes",
+        "command": "gitbutlerVscode.commit",
+        "title": "Commit",
         "category": "GitButler",
         "icon": "$(check)"
       },
       {
-        "command": "gitbutlerVscode.commitSelected",
-        "title": "Commit Selected Changes",
+        "command": "gitbutlerVscode.stage",
+        "title": "Stage Changes",
         "category": "GitButler",
-        "icon": "$(check)"
+        "icon": "$(add)"
       },
       {
-        "command": "gitbutlerVscode.discardSelected",
+        "command": "gitbutlerVscode.unstage",
+        "title": "Unstage Changes",
+        "category": "GitButler",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "gitbutlerVscode.discard",
         "title": "Discard Changes",
-        "category": "GitButler",
-        "icon": "$(discard)"
-      },
-      {
-        "command": "gitbutlerVscode.discardGroup",
-        "title": "Discard All Changes",
         "category": "GitButler",
         "icon": "$(discard)"
       },
@@ -152,15 +152,19 @@
     "menus": {
       "commandPalette": [
         {
-          "command": "gitbutlerVscode.commitSelected",
+          "command": "gitbutlerVscode.commit",
+          "when": "gitbutlerVscode.hasRepository"
+        },
+        {
+          "command": "gitbutlerVscode.stage",
           "when": "false"
         },
         {
-          "command": "gitbutlerVscode.discardSelected",
+          "command": "gitbutlerVscode.unstage",
           "when": "false"
         },
         {
-          "command": "gitbutlerVscode.discardGroup",
+          "command": "gitbutlerVscode.discard",
           "when": "false"
         },
         {
@@ -202,7 +206,7 @@
           "group": "navigation"
         },
         {
-          "command": "gitbutlerVscode.commitAll",
+          "command": "gitbutlerVscode.commit",
           "when": "scmProvider == gitbutlerVscode",
           "group": "navigation"
         },
@@ -214,9 +218,34 @@
       ],
       "scm/resourceGroup/context": [
         {
-          "command": "gitbutlerVscode.discardGroup",
-          "when": "scmProvider == gitbutlerVscode",
-          "group": "inline"
+          "command": "gitbutlerVscode.discard",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbutlerVscode.stage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitbutlerVscode.unstage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup == staged",
+          "group": "inline@2"
+        },
+        {
+          "command": "gitbutlerVscode.stage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
+          "group": "1_modification"
+        },
+        {
+          "command": "gitbutlerVscode.unstage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup == staged",
+          "group": "1_modification"
+        },
+        {
+          "command": "gitbutlerVscode.discard",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
+          "group": "1_modification"
         }
       ],
       "scm/resourceState/context": [
@@ -226,13 +255,18 @@
           "group": "inline@1"
         },
         {
-          "command": "gitbutlerVscode.discardSelected",
-          "when": "scmProvider == gitbutlerVscode",
+          "command": "gitbutlerVscode.discard",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
           "group": "inline@2"
         },
         {
-          "command": "gitbutlerVscode.commitSelected",
-          "when": "scmProvider == gitbutlerVscode",
+          "command": "gitbutlerVscode.stage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
+          "group": "inline@3"
+        },
+        {
+          "command": "gitbutlerVscode.unstage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup == staged",
           "group": "inline@3"
         },
         {
@@ -241,14 +275,19 @@
           "group": "navigation"
         },
         {
-          "command": "gitbutlerVscode.commitSelected",
-          "when": "scmProvider == gitbutlerVscode",
-          "group": "1_commit"
+          "command": "gitbutlerVscode.stage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
+          "group": "1_modification"
         },
         {
-          "command": "gitbutlerVscode.discardSelected",
-          "when": "scmProvider == gitbutlerVscode",
-          "group": "2_modification"
+          "command": "gitbutlerVscode.unstage",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup == staged",
+          "group": "1_modification"
+        },
+        {
+          "command": "gitbutlerVscode.discard",
+          "when": "scmProvider == gitbutlerVscode && scmResourceGroup != staged",
+          "group": "1_modification"
         }
       ]
     }

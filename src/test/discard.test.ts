@@ -34,7 +34,7 @@ describe("discarding", () => {
     const repository = await repo().repository();
     const selected = repository.unassignedGroup.resourceStates.filter((r) => !r.resourceUri.fsPath.endsWith("b.txt"));
 
-    const prompts = await run("Discard Changes", "gitbutlerVscode.discardSelected", ...selected);
+    const prompts = await run("Discard Changes", "gitbutlerVscode.discard", ...selected);
 
     assert.deepStrictEqual(prompts, ["Discard changes in 2 files?"]);
     assert.strictEqual(fs.readFileSync(repo().path("a.txt"), "utf8"), "a\n");
@@ -50,7 +50,7 @@ describe("discarding", () => {
     repo().remove("a.txt");
     const repository = await repo().repository();
 
-    await run("Discard Changes", "gitbutlerVscode.discardSelected", ...repository.unassignedGroup.resourceStates);
+    await run("Discard Changes", "gitbutlerVscode.discard", ...repository.unassignedGroup.resourceStates);
 
     assert.strictEqual(fs.readFileSync(repo().path("a.txt"), "utf8"), "a\n");
   });
@@ -60,7 +60,7 @@ describe("discarding", () => {
     repo().write("b.txt", "b\n");
     const repository = await repo().repository();
 
-    await run("Discard Changes", "gitbutlerVscode.discardGroup", repository.unassignedGroup);
+    await run("Discard Changes", "gitbutlerVscode.discard", repository.unassignedGroup);
 
     assert.deepStrictEqual(repo().status().uncommittedChanges, []);
     assert.strictEqual(repository.sourceControl.count, 0);
@@ -70,7 +70,7 @@ describe("discarding", () => {
     repo().write("a.txt", "a\n");
     const repository = await repo().repository();
 
-    const prompts = await run(undefined, "gitbutlerVscode.discardSelected", ...repository.unassignedGroup.resourceStates);
+    const prompts = await run(undefined, "gitbutlerVscode.discard", ...repository.unassignedGroup.resourceStates);
 
     assert.deepStrictEqual(prompts, ["Discard changes in a.txt?"]);
     assert.ok(fs.existsSync(repo().path("a.txt")));
@@ -81,7 +81,7 @@ describe("discarding", () => {
     const repository = await repo().repository();
     const empty = { resourceStates: [] };
 
-    const prompts = await run("Discard Changes", "gitbutlerVscode.discardGroup", empty);
+    const prompts = await run("Discard Changes", "gitbutlerVscode.discard", empty);
 
     assert.deepStrictEqual(prompts, []);
     assert.ok(fs.existsSync(repo().path("a.txt")));

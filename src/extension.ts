@@ -147,7 +147,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       await Promise.all(repositories.map((r) => r.refresh()));
     }),
 
-    // The Source Control panel appends a `preserveFocus` argument when opening a resource.
+    // Invoked by clicking a change in the Source Control panel or the Stacks view. The Source
+    // Control panel appends a `preserveFocus` argument.
     vscode.commands.registerCommand("gitbutlerVscode.openChange", async (target: OpenChangeTarget, preserveFocus?: boolean) => {
       const options = { preserveFocus: preserveFocus === true };
       try {
@@ -165,7 +166,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     // Control panel (with the selected changes), or the command palette (with nothing, for the
     // active diff). Opens working tree files. From a diff, keeps the cursor position.
     vscode.commands.registerCommand("gitbutlerVscode.openFile", async (...args: unknown[]) => {
-      const resources = args.filter((a): a is ChangeResource => a instanceof Object && "repository" in a);
+      const resources = changeResources(args);
       if (resources.length > 0) {
         // Opened in preview mode, each file would replace the one before.
         const preview = resources.length === 1 ? undefined : false;
@@ -196,7 +197,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     }),
 
     // Invoked from the SCM title bar (with the SourceControl), or the input box (with the Repository).
-    vscode.commands.registerCommand("gitbutlerVscode.commitAll", async (arg?: Repository | vscode.SourceControl) => {
+    // Commits the staged changes, or every change if none are staged.
+    vscode.commands.registerCommand("gitbutlerVscode.commit", async (arg?: Repository | vscode.SourceControl) => {
       const repository = await resolveRepository(arg);
       if (!repository) {
         return;
@@ -206,10 +208,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       if (!status) {
         return showError(repository.error ?? "Could not read GitButler status");
       }
-      const paths = [
-        ...status.uncommittedChanges.map((c) => c.filePath),
-        ...status.stacks.flatMap((s) => s.assignedChanges.map((c) => c.filePath)),
-      ];
+      const staged = repository.stagedPaths;
+      const paths = staged.length > 0 ? staged : repository.changes.map((c) => c.change.filePath);
       if (paths.length === 0) {
         vscode.window.showInformationMessage("There are no changes to commit.");
         return;
@@ -217,30 +217,17 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       await commit(repository, paths, assignedStack(status, paths)).catch(showError);
     }),
 
-    // Invoked from the context menu on one or more selected changes in the Source Control panel.
-    vscode.commands.registerCommand("gitbutlerVscode.commitSelected", async (...selected: ChangeResource[]) => {
-      const resources = selected.filter((r) => r?.repository);
-      if (resources.length === 0) {
-        return;
-      }
-      const repository = resources[0].repository;
-      const paths = resources.filter((r) => r.repository === repository).map((r) => r.change.filePath);
-      await repository.refresh();
-      if (!repository.status) {
-        return showError(repository.error ?? "Could not read GitButler status");
-      }
-      await commit(repository, paths, assignedStack(repository.status, paths)).catch(showError);
+    // These are invoked from the Source Control panel, with the selected changes or a group.
+    vscode.commands.registerCommand("gitbutlerVscode.stage", (...args: unknown[]) => {
+      const resources = changeResources(args);
+      resources[0]?.repository.setStaged(resources.map((r) => r.change.filePath), true);
     }),
-
-    // Invoked from the context menu or inline button on one or more selected changes in the
-    // Source Control panel.
-    vscode.commands.registerCommand("gitbutlerVscode.discardSelected", async (...selected: ChangeResource[]) => {
-      await discard(selected).catch(showError);
+    vscode.commands.registerCommand("gitbutlerVscode.unstage", (...args: unknown[]) => {
+      const resources = changeResources(args);
+      resources[0]?.repository.setStaged(resources.map((r) => r.change.filePath), false);
     }),
-
-    // Invoked from a resource group's inline button in the Source Control panel, with the group.
-    vscode.commands.registerCommand("gitbutlerVscode.discardGroup", async (group?: vscode.SourceControlResourceGroup) => {
-      await discard((group?.resourceStates ?? []) as ChangeResource[]).catch(showError);
+    vscode.commands.registerCommand("gitbutlerVscode.discard", async (...args: unknown[]) => {
+      await discard(changeResources(args)).catch(showError);
     }),
   );
 
@@ -345,14 +332,25 @@ async function pickBranch(status: Status, preferred?: Stack): Promise<string | u
   return name.trim();
 }
 
+/**
+ * The changes a Source Control panel command applies to, all from one repository. Commands on
+ * changes get every selected change, and commands on a group get the group.
+ */
+function changeResources(args: unknown[]): ChangeResource[] {
+  const resources = args.flatMap((arg): unknown[] =>
+    arg instanceof Object && "resourceStates" in arg ? (arg as vscode.SourceControlResourceGroup).resourceStates : [arg],
+  );
+  const changes = resources.filter((r): r is ChangeResource => r instanceof Object && "repository" in r && "change" in r);
+  return changes.filter((c) => c.repository === changes[0].repository);
+}
+
 /** Discards the given uncommitted changes, all from one repository, after asking for confirmation. */
 async function discard(resources: ChangeResource[]): Promise<void> {
-  resources = resources.filter((r) => r?.repository);
   if (resources.length === 0) {
     return;
   }
   const repository = resources[0].repository;
-  const changes = resources.filter((r) => r.repository === repository).map((r) => r.change);
+  const changes = resources.map((r) => r.change);
 
   const target = changes.length === 1 ? changes[0].filePath : `${changes.length} files`;
   const deletes = changes.some((c) => c.changeType === "added");
