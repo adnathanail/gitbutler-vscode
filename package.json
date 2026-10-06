@@ -70,6 +70,15 @@
         }
       }
     ],
+    "icons": {
+      "gitbutler-vscode-logo": {
+        "description": "GitButler bowtie",
+        "default": {
+          "fontPath": "resources/gitbutler-icons.woff",
+          "fontCharacter": "\\E000"
+        }
+      }
+    },
     "views": {
       "scm": [
         {

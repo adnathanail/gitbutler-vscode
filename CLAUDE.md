@@ -20,7 +20,8 @@ npx vscode-test --grep <pattern>          # run matching tests (compile first)
 | `src/stacksView.ts` | The GitButler Stacks tree view (stacks → branches → commits → files). |
 | `src/content.ts` | `RevisionFileSystemProvider`, a read-only file system serving file contents at a git revision for diffs and gutter markers. |
 | `src/gitIntegration.ts` | Suggestions to disable VS Code's built-in Git integration in GitButler repositories, and to re-enable it afterwards. |
-| `resources/` | Icons. `gitbutler-{light,dark}.svg` is a monochrome bowtie (⧓) standing in for the GitButler logo, in VS Code's toolbar icon colours. |
+| `resources/` | Icons. `gitbutler-{light,dark}.svg` is a monochrome bowtie (⧓) standing in for the GitButler logo, in VS Code's toolbar icon colours. `gitbutler-icons.woff` has the same bowtie as the `gitbutler-vscode-logo` icon, for status bar text. |
+| `scripts/build-icon-font.py` | Builds `gitbutler-icons.woff`: `uv run --with fonttools scripts/build-icon-font.py`. |
 | `src/test/` | Integration tests (mocha, `describe`/`it`). `helpers.ts` has the shared fixtures. |
 | `.vscode-test.mjs` | Test run configuration, including fixture setup. |
 
@@ -45,6 +46,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - `but status` writes to `.git/gitbutler/` (a lock file), so the repository file watcher ignores `.git/` apart from `HEAD`, `packed-refs` and `refs/`. Otherwise every status call would trigger another refresh.
 - `HEAD` is the GitButler workspace commit, a merge of every applied stack, so `HEAD:<path>` is the baseline for uncommitted changes.
 - `renamed` changes don't report the previous path.
+- `stacks` are in the GitButler app's left-to-right order (`order` in `.git/gitbutler/virtual_branches.toml`). New stacks are added on the left.
 - `but setup` registers the repository in a global GitButler project list (`~/Library/Application Support/com.gitbutler.app/projects.json` on macOS). It finds this through `HOME`.
 - `but open` (0.22.3) fails to open links itself, with "Invalid path scheme: but". `but open --print --json [<branch or commit>]` prints a `but://app/project/<base64 .git path>/workspace[?stacks=...]` link, but the GitButler app of the same version only brings itself to the front for it, without switching project or selecting anything. `but gui`, and clonager's `but://open?path=<repo path>` links, do switch project. Checked by watching `set_project_active` in GitButler's log (`~/Library/Logs/com.gitbutler.app/`, times in UTC; project IDs are the base64 of the `.git` path).
 - `vscode.env.openExternal` re-encodes a URL's query, turning `?stacks=branch:refs/heads/x` into `?stacks%3Dbranch%3Arefs%2Fheads%2Fx`, so it's unsuitable for `but:` links with queries.
@@ -58,6 +60,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - **`gitbutlerVscode.openChange` takes a single object argument** (`OpenChangeTarget`). The Source Control panel appends a `preserveFocus` boolean to resource command arguments, which was once read as a commit ID.
 - **Old file versions are served by a `FileSystemProvider`, not a `TextDocumentContentProvider`.** Non-text editors such as the image preview can only read through the file system API, and content providers caused "ModelService: Cannot add model because it already exists" errors. `git show` output is kept as raw bytes so binary files aren't corrupted.
 - **Files at moving refs reload when the applied commits change.** `Repository.updateHead` compares the commit IDs from each refresh and, when they change, tells `RevisionFileSystemProvider` to report its `HEAD` URIs as changed. URIs at commit IDs never change.
+- **The status bar entry is a `SourceControl.statusBarCommands` command**, not a separate status bar item, so VS Code shows it for the active repository as it does the Git extension's branch. Status bar text can only show icons from fonts, hence the icon font.
 - **Error notifications don't block.** `showError` fires and forgets, so commands finish when their work does, and tests don't hang waiting for a notification to be dismissed. Errors are also emitted on `ExtensionApi.onDidShowError` for tests.
 - **Discovery** runs on activation, when workspace folders change, and when any `.git/HEAD` changes (debounced), so `but setup`/`but teardown` in an open folder are noticed. Runs are serialised, and existing `Repository` objects are kept so their views don't reset.
 - **Git integration suggestions** are shown once per change in whether a folder is managed by GitButler. Disabling writes `git.enabled: false` to workspace settings (folder settings in a multi-root workspace) and records the folder and settings level in workspace state. Re-enabling removes the setting rather than setting it to `true`. If the user changed the setting since, the record is dropped silently.

@@ -8,3 +8,4 @@ out/test/**
 CLAUDE.md
 .github/**
 .gitignore
+scripts/**
