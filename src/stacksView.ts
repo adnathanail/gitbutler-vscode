@@ -1,0 +1,163 @@
+import * as path from "node:path";
+import * as vscode from "vscode";
+import { Branch, Commit, FileChange, Stack } from "./but";
+import { changeLetter, Repository } from "./repository";
+
+type Node =
+  | { kind: "repository"; repository: Repository }
+  | { kind: "message"; text: string; error?: boolean }
+  | { kind: "stack"; repository: Repository; stack: Stack }
+  | { kind: "branch"; repository: Repository; branch: Branch; stack: Stack }
+  | { kind: "commit"; repository: Repository; commit: Commit }
+  | { kind: "file"; repository: Repository; commit: Commit; change: FileChange };
+
+/** Tree of applied stacks → branches → commits → files. */
+export class StacksProvider implements vscode.TreeDataProvider<Node> {
+  private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
+
+  constructor(private readonly getRepositories: () => Repository[]) {}
+
+  refresh(): void {
+    this.onDidChangeTreeDataEmitter.fire();
+  }
+
+  getChildren(node?: Node): Node[] {
+    if (!node) {
+      const repositories = this.getRepositories();
+      if (repositories.length === 1) {
+        return this.repositoryChildren(repositories[0]);
+      }
+      return repositories.map((repository) => ({ kind: "repository", repository }));
+    }
+    switch (node.kind) {
+      case "repository":
+        return this.repositoryChildren(node.repository);
+      case "stack":
+        return node.stack.branches.map((branch) => ({
+          kind: "branch",
+          repository: node.repository,
+          branch,
+          stack: node.stack,
+        }));
+      case "branch":
+        return node.branch.commits.map((commit) => ({ kind: "commit", repository: node.repository, commit }));
+      case "commit":
+        return (node.commit.changes ?? []).map((change) => ({
+          kind: "file",
+          repository: node.repository,
+          commit: node.commit,
+          change,
+        }));
+      default:
+        return [];
+    }
+  }
+
+  private repositoryChildren(repository: Repository): Node[] {
+    if (repository.error) {
+      return [{ kind: "message", text: repository.error.split("\n")[0], error: true }];
+    }
+    if (!repository.status) {
+      return [{ kind: "message", text: "Loading…" }];
+    }
+    if (repository.status.stacks.length === 0) {
+      return [{ kind: "message", text: "No branches applied" }];
+    }
+    // A stack with a single branch is shown as just that branch.
+    return repository.status.stacks.map((stack) =>
+      stack.branches.length === 1
+        ? { kind: "branch", repository, branch: stack.branches[0], stack }
+        : { kind: "stack", repository, stack },
+    );
+  }
+
+  getTreeItem(node: Node): vscode.TreeItem {
+    switch (node.kind) {
+      case "repository": {
+        const item = new vscode.TreeItem(node.repository.name, vscode.TreeItemCollapsibleState.Expanded);
+        item.iconPath = new vscode.ThemeIcon("repo");
+        item.tooltip = node.repository.root;
+        item.description = behindDescription(node.repository);
+        return item;
+      }
+      case "message": {
+        const item = new vscode.TreeItem(node.text);
+        if (node.error) {
+          item.iconPath = new vscode.ThemeIcon("error", new vscode.ThemeColor("errorForeground"));
+          item.tooltip = node.text;
+        }
+        return item;
+      }
+      case "stack": {
+        const names = node.stack.branches.map((b) => b.name);
+        const item = new vscode.TreeItem(names[0], vscode.TreeItemCollapsibleState.Expanded);
+        item.iconPath = new vscode.ThemeIcon("layers");
+        item.description = `stack of ${names.length}`;
+        item.tooltip = `Stack (top to bottom):\n${names.join("\n")}`;
+        return item;
+      }
+      case "branch": {
+        const { branch } = node;
+        const item = new vscode.TreeItem(
+          branch.name,
+          branch.commits.length > 0
+            ? vscode.TreeItemCollapsibleState.Expanded
+            : vscode.TreeItemCollapsibleState.None,
+        );
+        item.iconPath = new vscode.ThemeIcon("git-branch");
+        const parts = [humanise(branch.branchStatus)];
+        if (branch.upstreamCommits.length > 0) {
+          parts.push(`${branch.upstreamCommits.length} upstream`);
+        }
+        item.description = parts.join(" · ");
+        item.tooltip = `${branch.name}\n${item.description}`;
+        return item;
+      }
+      case "commit": {
+        const { commit } = node;
+        const [subject] = commit.message.split("\n");
+        const item = new vscode.TreeItem(subject || "(no message)", vscode.TreeItemCollapsibleState.Collapsed);
+        item.iconPath = commit.conflicted
+          ? new vscode.ThemeIcon("warning", new vscode.ThemeColor("list.warningForeground"))
+          : new vscode.ThemeIcon("git-commit");
+        item.description = commit.commitId.slice(0, 7);
+        const tooltip = new vscode.MarkdownString();
+        tooltip.appendText(commit.message.trim());
+        tooltip.appendMarkdown("\n\n---\n\n");
+        tooltip.appendText(
+          `${commit.authorName} · ${new Date(commit.createdAt).toLocaleString()} · ${commit.commitId}`,
+        );
+        if (commit.conflicted) {
+          tooltip.appendMarkdown("\n\n**Conflicted**");
+        }
+        item.tooltip = tooltip;
+        return item;
+      }
+      case "file": {
+        const { change, commit, repository } = node;
+        const item = new vscode.TreeItem(vscode.Uri.file(path.join(repository.root, change.filePath)));
+        item.label = path.basename(change.filePath);
+        const dir = path.dirname(change.filePath);
+        item.description = `${changeLetter(change.changeType)}${dir === "." ? "" : `  ${dir}`}`;
+        item.tooltip = `${change.filePath} (${change.changeType})`;
+        item.command = {
+          command: "gitbutler.openChange",
+          title: "Open Changes",
+          arguments: [repository, change, commit.commitId],
+        };
+        return item;
+      }
+    }
+  }
+}
+
+export function behindDescription(repository: Repository): string | undefined {
+  const behind = repository.status?.upstreamState.behind ?? 0;
+  return behind > 0 ? `${behind} behind upstream` : undefined;
+}
+
+/** "completelyUnpushed" → "completely unpushed". */
+function humanise(camel: string): string {
+  return camel.replace(/([A-Z])/g, " $1").toLowerCase().trim();
+}

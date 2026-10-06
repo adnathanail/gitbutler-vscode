@@ -1,0 +1,118 @@
+{
+  "name": "gitbutler-vscode",
+  "displayName": "GitButler",
+  "description": "View GitButler stacks and commit changes using the `but` CLI",
+  "version": "0.0.1",
+  "publisher": "adnathanail",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "SCM Providers"
+  ],
+  "activationEvents": [
+    "workspaceContains:.git/gitbutler",
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "GitButler",
+      "properties": {
+        "gitbutler.butPath": {
+          "type": "string",
+          "default": "but",
+          "description": "Path to the GitButler `but` CLI executable."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "gitbutler.refresh",
+        "title": "Refresh",
+        "category": "GitButler",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gitbutler.commitAll",
+        "title": "Commit All Changes",
+        "category": "GitButler",
+        "icon": "$(check)"
+      },
+      {
+        "command": "gitbutler.commitSelected",
+        "title": "Commit Selected Changes",
+        "category": "GitButler",
+        "icon": "$(check)"
+      },
+      {
+        "command": "gitbutler.openChange",
+        "title": "Open Changes",
+        "category": "GitButler"
+      }
+    ],
+    "views": {
+      "scm": [
+        {
+          "id": "gitbutler.stacks",
+          "name": "GitButler Stacks",
+          "when": "gitbutler.hasRepository"
+        }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "gitbutler.commitSelected",
+          "when": "false"
+        },
+        {
+          "command": "gitbutler.openChange",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "gitbutler.refresh",
+          "when": "view == gitbutler.stacks",
+          "group": "navigation"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "gitbutler.commitAll",
+          "when": "scmProvider == gitbutler",
+          "group": "navigation"
+        },
+        {
+          "command": "gitbutler.refresh",
+          "when": "scmProvider == gitbutler",
+          "group": "navigation"
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "gitbutler.commitSelected",
+          "when": "scmProvider == gitbutler",
+          "group": "inline"
+        },
+        {
+          "command": "gitbutler.commitSelected",
+          "when": "scmProvider == gitbutler",
+          "group": "1_commit"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -watch -p .",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "~1.90.0",
+    "typescript": "^5.6.0"
+  }
+}
