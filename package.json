@@ -194,9 +194,19 @@
       ],
       "scm/resourceState/context": [
         {
+          "command": "gitbutlerVscode.openFile",
+          "when": "scmProvider == gitbutlerVscode && scmResourceState != removed",
+          "group": "inline@1"
+        },
+        {
           "command": "gitbutlerVscode.commitSelected",
           "when": "scmProvider == gitbutlerVscode",
-          "group": "inline"
+          "group": "inline@2"
+        },
+        {
+          "command": "gitbutlerVscode.openFile",
+          "when": "scmProvider == gitbutlerVscode && scmResourceState != removed",
+          "group": "navigation"
         },
         {
           "command": "gitbutlerVscode.commitSelected",

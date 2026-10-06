@@ -108,6 +108,36 @@ describe("opening changes", () => {
     assert.match(errors[0], /a\.txt doesn't exist/);
   });
 
+  it("opens the selected changes' files from the Source Control panel", async () => {
+    repo().write("a.txt", "a\n");
+    repo().write("b.txt", "b\n");
+    const repository = await repo().repository();
+    const resources = repository.unassignedGroup.resourceStates;
+
+    const { errors, dispose } = collectErrors(api);
+    try {
+      // Called the same way the Source Control panel calls it, with every selected change.
+      await vscode.commands.executeCommand("gitbutlerVscode.openFile", ...resources);
+    } finally {
+      dispose();
+    }
+
+    assert.deepStrictEqual(errors, []);
+    const open = vscode.window.tabGroups.activeTabGroup.tabs
+      .map((t) => (t.input instanceof vscode.TabInputText ? t.input.uri.fsPath : undefined))
+      .sort();
+    assert.deepStrictEqual(open, [repo().path("a.txt"), repo().path("b.txt")]);
+  });
+
+  // The Open File menu items are hidden for deleted files using this.
+  it("gives Source Control resources their change type as context value", async () => {
+    repo().commit("a.txt", "a\n", "Add a", "feature");
+    repo().remove("a.txt");
+    const repository = await repo().repository();
+
+    assert.deepStrictEqual(repository.unassignedGroup.resourceStates.map((r) => r.contextValue), ["removed"]);
+  });
+
   it("shows new files as empty at HEAD instead of failing", async () => {
     repo().write("new.txt", "content\n");
     const document = await vscode.workspace.openTextDocument(
