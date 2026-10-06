@@ -25,7 +25,28 @@ npm install
 npm run compile
 ```
 
-Press F5 to launch an Extension Development Host. Commands run by the extension are logged to the **GitButler** output channel.
+Press ⌃F5 (Run Without Debugging) to launch an Extension Development Host. Commands run by the extension are logged to the **GitButler** output channel.
+
+## Tests
+
+```sh
+npm test
+```
+
+Tests run inside a separate copy of VS Code, downloaded to `.vscode-test/` on the first run, using real `but` and git. To run only some tests, pass `--grep`, e.g. `npx vscode-test --grep committing` (compile first with `npm run compile`).
+
+`.vscode-test.mjs` sets up each run:
+
+- `HOME` points at `.vscode-test/fixtures/home`, so `but setup` registers test repositories in a throwaway GitButler project list, never the real one.
+- The window opens on a fresh GitButler repository in `.vscode-test/fixtures/workspace`, for testing discovery.
+
+Tests that change repository state use `useTestRepo()` from `src/test/helpers.ts`, which gives each test its own fresh GitButler repository. `collectErrors(api)` captures error notifications the extension shows, so a test can assert that none appeared.
+
+### Adding a regression test
+
+1. Reproduce the bug in the relevant `src/test/*.test.ts` file (or a new one), calling commands the same way the UI does. For example, the Source Control panel appends a `preserveFocus` argument to resource commands.
+2. Start the test's comment with `Regression:` and describe the symptom, so it can be searched for later.
+3. Check the test fails without the fix, then passes with it.
 
 ## How it works
 

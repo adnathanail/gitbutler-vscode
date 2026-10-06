@@ -34,7 +34,7 @@ export function changeLetter(type: ChangeType): string {
 export class Repository implements vscode.Disposable {
   readonly but: But;
   readonly sourceControl: vscode.SourceControl;
-  private readonly unassignedGroup: vscode.SourceControlResourceGroup;
+  readonly unassignedGroup: vscode.SourceControlResourceGroup;
   private readonly stackGroups = new Map<string, vscode.SourceControlResourceGroup>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();

@@ -8,7 +8,16 @@ const WORKSPACE_BRANCH = "gitbutler/workspace";
 
 let repositories: Repository[] = [];
 
-export function activate(context: vscode.ExtensionContext): void {
+/** Returned from `activate`, for tests. */
+export interface ExtensionApi {
+  /** Resolves once the repositories found at activation have loaded their status. */
+  readonly ready: Promise<void>;
+  readonly repositories: () => Repository[];
+  /** Fires with the full message of every error shown to the user. */
+  readonly onDidShowError: vscode.Event<string>;
+}
+
+export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const log = vscode.window.createOutputChannel("GitButler");
   const stacks = new StacksProvider(() => repositories);
   const stacksView = vscode.window.createTreeView("gitbutlerVscode.stacks", { treeDataProvider: stacks });
@@ -31,16 +40,22 @@ export function activate(context: vscode.ExtensionContext): void {
     await Promise.all(repositories.map((r) => r.refresh()));
   };
 
-  const showError = async (err: unknown) => {
+  const errorEmitter = new vscode.EventEmitter<string>();
+
+  // Doesn't wait for the notification to be dismissed, so commands finish when their work does.
+  const showError = (err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
-    const choice = await vscode.window.showErrorMessage(message.split("\n")[0], "Show Output");
-    if (choice) {
-      log.show();
-    }
+    errorEmitter.fire(message);
+    void vscode.window.showErrorMessage(message.split("\n")[0], "Show Output").then((choice) => {
+      if (choice) {
+        log.show();
+      }
+    });
   };
 
   context.subscriptions.push(
     log,
+    errorEmitter,
     stacksView,
     vscode.workspace.registerTextDocumentContentProvider(
       RevisionContentProvider.scheme,
@@ -63,7 +78,7 @@ export function activate(context: vscode.ExtensionContext): void {
           await target.repository.openUncommittedChange(target.change, options);
         }
       } catch (err) {
-        await showError(err);
+        showError(err);
       }
     }),
 
@@ -105,7 +120,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  void discover();
+  return { ready: discover(), repositories: () => repositories, onDidShowError: errorEmitter.event };
 }
 
 export function deactivate(): void {}
