@@ -47,6 +47,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - `but status` writes to `.git/gitbutler/` (a lock file), so the repository file watcher ignores `.git/` apart from `HEAD`, `packed-refs` and `refs/`. Otherwise every status call would trigger another refresh.
 - `HEAD` is the GitButler workspace commit, a merge of every applied stack, so `HEAD:<path>` is the baseline for uncommitted changes.
 - `renamed` changes don't report the previous path.
+- A stack's `branches` include every local branch that points at one of its commits, not only branches created with GitButler.
 - `stacks` are in the GitButler app's left-to-right order (`order` in `.git/gitbutler/virtual_branches.toml`). New stacks are added on the left.
 - `but setup` registers the repository in a global GitButler project list (`~/Library/Application Support/com.gitbutler.app/projects.json` on macOS). It finds this through `HOME`.
 - `but open` (0.22.3) fails to open links itself, with "Invalid path scheme: but". `but open --print --json [<branch or commit>]` prints a `but://app/project/<base64 .git path>/workspace[?stacks=...]` link, but the GitButler app of the same version only brings itself to the front for it, without switching project or selecting anything. `but gui`, and clonager's `but://open?path=<repo path>` links, do switch project. Checked by watching `set_project_active` in GitButler's log (`~/Library/Logs/com.gitbutler.app/`, times in UTC; project IDs are the base64 of the `.git` path).
@@ -111,10 +112,6 @@ Useful logs:
 - The **GitButler** output channel in the development window lists every `but` and discovery `git` command and its errors.
 - VS Code's own logs are in `~/Library/Application Support/Code/logs/<session>/window<N>/`. `exthost/exthost.log` and `renderer.log` have extension host and window errors; `exthost/output_logging_*/` has output channel contents.
 - Test runs keep their logs in `.vscode-test/user-data/logs/`.
-
-## Version control
-
-This repository uses plain git on `main`, not GitButler.
 
 ## Next steps
 
