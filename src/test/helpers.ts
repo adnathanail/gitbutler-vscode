@@ -107,3 +107,43 @@ export function activeDiff(): vscode.TabInputTextDiff | undefined {
   const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
   return input instanceof vscode.TabInputTextDiff ? input : undefined;
 }
+
+/** Replaces `vscode.window.showInformationMessage` with one that records messages and gives `answer`. */
+export function stubInformationMessage(answer?: string): { calls: string[]; restore(): void } {
+  const window = vscode.window as { showInformationMessage: unknown };
+  const original = window.showInformationMessage;
+  const calls: string[] = [];
+  window.showInformationMessage = async (message: string) => {
+    calls.push(message);
+    return answer;
+  };
+  return { calls, restore: () => (window.showInformationMessage = original) };
+}
+
+/** An in-memory stand-in for `ExtensionContext.workspaceState`. */
+export class MemoryMemento implements vscode.Memento {
+  private readonly values = new Map<string, unknown>();
+
+  keys(): readonly string[] {
+    return [...this.values.keys()];
+  }
+
+  get<T>(key: string, defaultValue?: T): T {
+    return (this.values.has(key) ? this.values.get(key) : defaultValue) as T;
+  }
+
+  async update(key: string, value: unknown): Promise<void> {
+    this.values.set(key, value);
+  }
+}
+
+/** Polls until `condition` is true, failing with `message` after `timeout` ms. */
+export async function waitFor(condition: () => boolean, message: string, timeout = 10000): Promise<void> {
+  const deadline = Date.now() + timeout;
+  while (!condition()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out waiting: ${message}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}

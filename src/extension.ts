@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { FileChange, run, Stack, Status } from "./but";
 import { RevisionContentProvider } from "./content";
+import { suggestDisablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
 import { behindDescription, StacksProvider } from "./stacksView";
 
@@ -27,18 +28,58 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     stacksView.description = repositories.length === 1 ? behindDescription(repositories[0]) : undefined;
   };
 
-  const discover = async () => {
-    const found = await findRepositoryRoots(log);
-    repositories.forEach((r) => r.dispose());
-    repositories = found.map((root) => {
-      const repository = new Repository(root, log);
-      repository.onDidChange(onRepositoryChange);
-      return repository;
-    });
+  // Workspace folders already offered the chance to disable Git in this session.
+  const suggestedFolders = new Set<string>();
+
+  const doDiscover = async () => {
+    const found = await findRepositories(log);
+
+    // Keep repositories that are still present, so their views don't reset.
+    for (const repository of repositories.filter((r) => !found.has(r.root))) {
+      repository.dispose();
+    }
+    const kept = repositories.filter((r) => found.has(r.root));
+    const added = [...found.keys()]
+      .filter((root) => !kept.some((r) => r.root === root))
+      .map((root) => {
+        const repository = new Repository(root, log);
+        repository.onDidChange(onRepositoryChange);
+        return repository;
+      });
+    repositories = [...kept, ...added];
     await vscode.commands.executeCommand("setContext", "gitbutlerVscode.hasRepository", repositories.length > 0);
     onRepositoryChange();
-    await Promise.all(repositories.map((r) => r.refresh()));
+
+    for (const [root, folders] of found) {
+      for (const folder of folders) {
+        if (!suggestedFolders.has(folder.uri.toString())) {
+          suggestedFolders.add(folder.uri.toString());
+          // Not awaited: the notification stays until the user responds.
+          void suggestDisablingGit(folder, vscode.Uri.file(root), context.workspaceState);
+        }
+      }
+    }
+
+    await Promise.all(added.map((r) => r.refresh()));
   };
+
+  // Runs one discovery at a time, so overlapping triggers can't create duplicate repositories.
+  let discovering = Promise.resolve();
+  const discover = () => {
+    discovering = discovering.then(doDiscover).catch((err) => log.appendLine(`Discovery failed: ${err}`));
+    return discovering;
+  };
+
+  // `but setup` and `but teardown` switch branches in a folder that's already open.
+  let headTimer: NodeJS.Timeout | undefined;
+  const onHeadChange = () => {
+    clearTimeout(headTimer);
+    headTimer = setTimeout(() => void discover(), 500);
+  };
+  const headWatcher = vscode.workspace.createFileSystemWatcher("**/.git/HEAD");
+  headWatcher.onDidChange(onHeadChange);
+  headWatcher.onDidCreate(onHeadChange);
+  headWatcher.onDidDelete(onHeadChange);
 
   const errorEmitter = new vscode.EventEmitter<string>();
 
@@ -62,6 +103,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       new RevisionContentProvider(log),
     ),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void discover()),
+    headWatcher,
+    { dispose: () => clearTimeout(headTimer) },
     { dispose: () => repositories.forEach((r) => r.dispose()) },
 
     vscode.commands.registerCommand("gitbutlerVscode.refresh", async () => {
@@ -125,8 +168,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 
 export function deactivate(): void {}
 
-async function findRepositoryRoots(log: vscode.OutputChannel): Promise<string[]> {
-  const roots = new Set<string>();
+/** Root paths of the GitButler repositories containing each workspace folder. */
+async function findRepositories(log: vscode.OutputChannel): Promise<Map<string, vscode.WorkspaceFolder[]>> {
+  const found = new Map<string, vscode.WorkspaceFolder[]>();
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
     if (folder.uri.scheme !== "file") {
       continue;
@@ -135,13 +179,13 @@ async function findRepositoryRoots(log: vscode.OutputChannel): Promise<string[]>
       const root = (await run("git", ["rev-parse", "--show-toplevel"], folder.uri.fsPath, log)).trim();
       const branch = (await run("git", ["branch", "--show-current"], root, log)).trim();
       if (branch === WORKSPACE_BRANCH) {
-        roots.add(root);
+        found.set(root, [...(found.get(root) ?? []), folder]);
       }
     } catch {
       // Not a git repository.
     }
   }
-  return [...roots];
+  return found;
 }
 
 async function resolveRepository(arg?: Repository | vscode.SourceControl): Promise<Repository | undefined> {

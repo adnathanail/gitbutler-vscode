@@ -24,6 +24,11 @@
           "type": "string",
           "default": "but",
           "description": "Path to the GitButler `but` CLI executable."
+        },
+        "gitbutlerVscode.suggestDisablingGit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suggest disabling VS Code's built-in Git integration in workspaces whose repository is managed by GitButler."
         }
       }
     },
