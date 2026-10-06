@@ -108,14 +108,19 @@ export function activeDiff(): vscode.TabInputTextDiff | undefined {
   return input instanceof vscode.TabInputTextDiff ? input : undefined;
 }
 
-/** Replaces `vscode.window.showInformationMessage` with one that records messages and gives `answer`. */
-export function stubInformationMessage(answer?: string): { calls: string[]; restore(): void } {
+/**
+ * Replaces `vscode.window.showInformationMessage` with one that records messages and answers with
+ * `answer`, or with what `answer` returns given the message and its buttons.
+ */
+export function stubInformationMessage(
+  answer?: string | ((message: string, items: string[]) => string | undefined),
+): { calls: string[]; restore(): void } {
   const window = vscode.window as { showInformationMessage: unknown };
   const original = window.showInformationMessage;
   const calls: string[] = [];
-  window.showInformationMessage = async (message: string) => {
+  window.showInformationMessage = async (message: string, ...items: string[]) => {
     calls.push(message);
-    return answer;
+    return typeof answer === "function" ? answer(message, items) : answer;
   };
   return { calls, restore: () => (window.showInformationMessage = original) };
 }

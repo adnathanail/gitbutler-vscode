@@ -16,7 +16,7 @@ When several stacks are applied, committing asks which branch to commit to, or o
 - `but` on your `PATH`, or set `gitbutlerVscode.butPath`.
 - A repository on the `gitbutler/workspace` branch (run `but setup` first).
 
-VS Code's built-in Git integration also shows the repository, and committing with it on the `gitbutler/workspace` branch bypasses GitButler. When the extension finds a GitButler repository with Git integration enabled, it offers to disable it by setting `"git.enabled": false` in the workspace settings (or the folder's settings, in a multi-root workspace). To stop this suggestion everywhere, set `gitbutlerVscode.suggestDisablingGit` to `false`.
+VS Code's built-in Git integration also shows the repository, and committing with it on the `gitbutler/workspace` branch bypasses GitButler. When the extension finds a GitButler repository with Git integration enabled, it offers to disable it by setting `"git.enabled": false` in the workspace settings (or the folder's settings, in a multi-root workspace). To stop this suggestion everywhere, set `gitbutlerVscode.suggestDisablingGit` to `false`. If a folder the extension disabled Git for stops being a GitButler repository, for example after `but teardown`, it offers to re-enable Git by removing that setting. If you've changed the setting yourself since, it leaves it alone.
 
 The extension looks for GitButler repositories when it starts, when workspace folders are added or removed, and when a repository's `.git/HEAD` changes, for example after `but setup` or `but teardown` in an open folder.
 

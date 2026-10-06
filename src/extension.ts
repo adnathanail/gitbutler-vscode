@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { FileChange, run, Stack, Status } from "./but";
 import { RevisionContentProvider } from "./content";
-import { suggestDisablingGit } from "./gitIntegration";
+import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
 import { behindDescription, StacksProvider } from "./stacksView";
 
@@ -28,8 +28,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     stacksView.description = repositories.length === 1 ? behindDescription(repositories[0]) : undefined;
   };
 
-  // Workspace folders already offered the chance to disable Git in this session.
-  const suggestedFolders = new Set<string>();
+  // Workspace folders already prompted about. Each prompt is shown once per change in whether a
+  // folder is managed by GitButler, rather than on every discovery.
+  const promptedToDisableGit = new Set<string>();
+  const promptedToReenableGit = new Set<string>();
 
   const doDiscover = async () => {
     const found = await findRepositories(log);
@@ -50,12 +52,26 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     await vscode.commands.executeCommand("setContext", "gitbutlerVscode.hasRepository", repositories.length > 0);
     onRepositoryChange();
 
+    const gitButlerRoots = new Map<string, string>();
     for (const [root, folders] of found) {
-      for (const folder of folders) {
-        if (!suggestedFolders.has(folder.uri.toString())) {
-          suggestedFolders.add(folder.uri.toString());
-          // Not awaited: the notification stays until the user responds.
-          void suggestDisablingGit(folder, vscode.Uri.file(root), context.workspaceState);
+      folders.forEach((folder) => gitButlerRoots.set(folder.uri.toString(), root));
+    }
+    const state = context.workspaceState;
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      const key = folder.uri.toString();
+      const root = gitButlerRoots.get(key);
+      // Not awaited: notifications stay until the user responds.
+      if (root !== undefined) {
+        promptedToReenableGit.delete(key);
+        if (!promptedToDisableGit.has(key)) {
+          promptedToDisableGit.add(key);
+          void suggestDisablingGit(folder, vscode.Uri.file(root), state);
+        }
+      } else {
+        promptedToDisableGit.delete(key);
+        if (!promptedToReenableGit.has(key) && isGitDisabledByExtension(folder, state)) {
+          promptedToReenableGit.add(key);
+          void suggestReenablingGit(folder, state);
         }
       }
     }

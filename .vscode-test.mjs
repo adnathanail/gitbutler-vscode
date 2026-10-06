@@ -9,6 +9,9 @@ const fixtures = path.resolve(".vscode-test/fixtures");
 const home = path.join(fixtures, "home");
 const workspace = path.join(fixtures, "workspace");
 fs.rmSync(fixtures, { recursive: true, force: true });
+// Workspace state (e.g. folders the extension disabled Git for) would otherwise carry over between
+// runs, because the fixture workspace has the same path each time.
+fs.rmSync(path.resolve(".vscode-test/user-data/User/workspaceStorage"), { recursive: true, force: true });
 fs.mkdirSync(home, { recursive: true });
 fs.mkdirSync(workspace, { recursive: true });
 
