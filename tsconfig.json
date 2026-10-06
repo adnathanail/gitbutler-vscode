@@ -6,7 +6,10 @@
     "outDir": "out",
     "rootDir": "src",
     "sourceMap": true,
-    "strict": true
+    "strict": true,
+    // Listed explicitly because TypeScript 6 (bundled with VS Code) no longer includes every
+    // @types package by default, which leaves Node and mocha globals undefined in the editor.
+    "types": ["node", "mocha"]
   },
   "include": ["src"]
 }
