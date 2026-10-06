@@ -28,8 +28,9 @@ export class RevisionContentProvider implements vscode.TextDocumentContentProvid
     }
     const relativePath = path.relative(root, uri.fsPath).split(path.sep).join("/");
     try {
-      return await run("git", ["show", `${ref}:${relativePath}`], root, this.log);
+      return await run("git", ["show", `${ref}:${relativePath}`], root, this.log, { logErrors: false });
     } catch {
+      // The file doesn't exist at this revision, e.g. it's newly added.
       return "";
     }
   }

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { FileChange, run, Stack, Status } from "./but";
 import { RevisionContentProvider } from "./content";
-import { ChangeResource, Repository } from "./repository";
+import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
 import { behindDescription, StacksProvider } from "./stacksView";
 
 const WORKSPACE_BRANCH = "gitbutler/workspace";
@@ -53,12 +53,14 @@ export function activate(context: vscode.ExtensionContext): void {
       await Promise.all(repositories.map((r) => r.refresh()));
     }),
 
-    vscode.commands.registerCommand("gitbutlerVscode.openChange", async (repository: Repository, change: FileChange, commitId?: string) => {
+    // The Source Control panel appends a `preserveFocus` argument when opening a resource.
+    vscode.commands.registerCommand("gitbutlerVscode.openChange", async (target: OpenChangeTarget, preserveFocus?: boolean) => {
+      const options = { preserveFocus: preserveFocus === true };
       try {
-        if (commitId) {
-          await repository.openCommittedChange(commitId, change);
+        if (target.commitId) {
+          await target.repository.openCommittedChange(target.commitId, target.change, options);
         } else {
-          await repository.openUncommittedChange(change);
+          await target.repository.openUncommittedChange(target.change, options);
         }
       } catch (err) {
         await showError(err);

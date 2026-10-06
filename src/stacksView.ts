@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { Branch, Commit, FileChange, Stack } from "./but";
-import { changeLetter, Repository } from "./repository";
+import { changeLetter, OpenChangeTarget, Repository } from "./repository";
 
 type Node =
   | { kind: "repository"; repository: Repository }
@@ -144,7 +144,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node> {
         item.command = {
           command: "gitbutlerVscode.openChange",
           title: "Open Changes",
-          arguments: [repository, change, commit.commitId],
+          arguments: [{ repository, change, commitId: commit.commitId } satisfies OpenChangeTarget],
         };
         return item;
       }

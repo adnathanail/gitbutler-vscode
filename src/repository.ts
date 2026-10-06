@@ -11,6 +11,13 @@ export interface ChangeResource extends vscode.SourceControlResourceState {
   readonly stack?: Stack;
 }
 
+/** Argument to the `gitbutlerVscode.openChange` command. Without a commit, opens an uncommitted change. */
+export interface OpenChangeTarget {
+  readonly repository: Repository;
+  readonly change: FileChange;
+  readonly commitId?: string;
+}
+
 /** Repository paths that change without the workspace state changing, e.g. `but`'s own lock file. */
 function isIgnoredPath(root: string, uri: vscode.Uri): boolean {
   const relative = path.relative(root, uri.fsPath).split(path.sep).join("/");
@@ -161,7 +168,7 @@ export class Repository implements vscode.Disposable {
       command: {
         command: "gitbutlerVscode.openChange",
         title: "Open Changes",
-        arguments: [this, change],
+        arguments: [{ repository: this, change } satisfies OpenChangeTarget],
       },
       decorations: {
         strikeThrough: change.changeType === "removed",
@@ -172,7 +179,7 @@ export class Repository implements vscode.Disposable {
   }
 
   /** Opens a diff of an uncommitted change against the workspace commit. */
-  async openUncommittedChange(change: FileChange): Promise<void> {
+  async openUncommittedChange(change: FileChange, options?: vscode.TextDocumentShowOptions): Promise<void> {
     const fileUri = vscode.Uri.file(path.join(this.root, change.filePath));
     const left = RevisionContentProvider.uri(this.root, change.filePath, change.changeType === "added" ? "" : "HEAD");
     const right =
@@ -182,11 +189,16 @@ export class Repository implements vscode.Disposable {
       left,
       right,
       `${path.basename(change.filePath)} (Uncommitted)`,
+      options,
     );
   }
 
   /** Opens a diff of a file as changed by a commit. */
-  async openCommittedChange(commitId: string, change: FileChange): Promise<void> {
+  async openCommittedChange(
+    commitId: string,
+    change: FileChange,
+    options?: vscode.TextDocumentShowOptions,
+  ): Promise<void> {
     const left = RevisionContentProvider.uri(
       this.root,
       change.filePath,
@@ -202,6 +214,7 @@ export class Repository implements vscode.Disposable {
       left,
       right,
       `${path.basename(change.filePath)} (${commitId.slice(0, 7)})`,
+      options,
     );
   }
 
