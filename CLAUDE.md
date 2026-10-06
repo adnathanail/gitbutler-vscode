@@ -121,6 +121,7 @@ Useful logs:
 Improvements discussed but not yet made:
 
 - **Commit individual hunks.** `but diff --json` lists hunk IDs (`<file>:<hunk>`), which `but commit` accepts. Hunk IDs change as the workspace changes, so they'd need resolving just before committing.
+- **Assign changes to branches, as GitButler's form of staging.** `but` 0.22.3 reports assignments (`assignedChanges`) but has no command to change them: `but rub` was retired, and `but move` only moves commits, committed files and branches. Once a `but` release can assign uncommitted files, an "Assign to…" action on Source Control rows would let the existing "Assigned to …" groups act as staging areas. Staging shouldn't be tracked by the extension itself, since GitButler wouldn't see it.
 - **Choose a branch when only one stack is applied.** Commits currently go to the tip of that stack without asking, which is `but`'s default. Offering the branch picker (including "New Branch…") there too would allow starting a new stack.
 - **Diffs for renames.** `but status` only reports the new path, so a rename's diff compares the new file with whatever existed at that path before. Getting the old path would need another source, such as `git diff --find-renames`.
 - **Check the `but` version.** The JSON format may change between `but` releases. Checking `but --version` on startup and warning about untested versions would make breakages clearer.
