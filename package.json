@@ -2,9 +2,13 @@
   "name": "gitbutler-vscode",
   "displayName": "GitButler Stacks (Unofficial)",
   "description": "Unofficial: view GitButler stacks and commit changes using the `but` CLI. Not affiliated with GitButler, Inc.",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "publisher": "adnathanail",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adnathanail/gitbutler-vscode.git"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -147,6 +151,7 @@
     "@types/vscode": "~1.90.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
     "mocha": "^12.0.3",
     "typescript": "^5.6.0"
   }

@@ -16,6 +16,16 @@ This is an unofficial extension. It isn't affiliated with or endorsed by GitButl
 
 When several stacks are applied, committing asks which branch to commit to, or offers to create a new one. Changes that are all assigned to one stack go to the top of that stack without asking.
 
+## Installation
+
+Download the `.vsix` file from the latest [release](https://github.com/adnathanail/gitbutler-vscode/releases), then run **Extensions: Install from VSIX…** in VS Code, or:
+
+```sh
+code --install-extension gitbutler-vscode-vX.Y.Z.vsix
+```
+
+VS Code doesn't update extensions installed this way, so install new releases the same way.
+
 ## Requirements
 
 - `but` on your `PATH`, or set `gitbutlerVscode.butPath`.

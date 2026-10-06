@@ -72,7 +72,7 @@ Tests run inside a separate copy of VS Code (downloaded to `.vscode-test/`) usin
 - **The window opens on a fresh GitButler repository** in `.vscode-test/fixtures/workspace`, for discovery tests.
 - **Stored workspace state is cleared** before each run, because the fixture workspace has the same path every time.
 
-Versions are pinned, because this is a personal project used with one setup: VS Code in `.vscode-test.mjs` (`version`), and GitButler in CI (`.github/workflows/ci.yml`), which downloads the app from GitButler's release URL, checks its SHA-256 and links `but` from it, as Homebrew does (Homebrew only installs the latest version). The URL format and checksums are in Homebrew's cask (`Casks/g/gitbutler.rb`). When upgrading, update both, the versions named in the README, and the version in "How the extension uses `but`". The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
+Versions are pinned, because this is a personal project used with one setup: VS Code in `.vscode-test.mjs` (`version`), and GitButler in `.github/actions/install-gitbutler/action.yml` (used by CI and releases), which downloads the app from GitButler's release URL, checks its SHA-256 and links `but` from it, as Homebrew does (Homebrew only installs the latest version). The URL format and checksums are in Homebrew's cask (`Casks/g/gitbutler.rb`). When upgrading, update both, the versions named in the README, and the version in "How the extension uses `but`". The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
 
 Helpers in `src/test/helpers.ts`:
 
@@ -83,6 +83,18 @@ Helpers in `src/test/helpers.ts`:
 - `waitFor(condition, message)` polls for asynchronous effects such as rediscovery.
 
 Tests of commands should call them the same way the UI does, including arguments VS Code adds. When fixing a bug, add a regression test whose comment starts with `Regression:` and describes the symptom, and check that it fails without the fix.
+
+## Releasing
+
+Run **Actions → Release → Run workflow** on `main`, choosing patch, minor or major. `.github/workflows/release.yml`, modelled on clonager's:
+
+1. works out the version from the latest `vX.Y.Z` tag
+2. makes a release commit on top of `main` that sets `version` in `package.json` (and `package-lock.json`), and tags it. `main` itself stays at version `0.0.0`; the release commit is only reachable from its tag
+3. runs the tests against the pinned GitButler
+4. packages the extension with `vsce package --no-dependencies`. The flag matters: the extension has no runtime dependencies, and when vsce's `npm list` dependency check fails it silently packages no files and then reports the entry point as missing
+5. pushes the tag and creates a GitHub release with the `.vsix` attached and generated notes.
+
+The extension isn't on the VS Code Marketplace or Open VSX. To check what would be packaged, run `npx vsce ls --no-dependencies`.
 
 ## Debugging
 

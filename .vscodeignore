@@ -5,3 +5,6 @@ tsconfig.json
 out/test/**
 .vscode-test/**
 .vscode-test.mjs
+CLAUDE.md
+.github/**
+.gitignore
