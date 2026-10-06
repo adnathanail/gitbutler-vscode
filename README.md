@@ -8,7 +8,7 @@ View GitButler stacks and commit changes from VS Code, using the [`but` CLI](htt
 - **Commit all**: type a message and press ⌘Enter (or the ✓ in the panel title).
 - **Commit selected**: right-click one or more changes → *Commit Selected Changes*.
 - **GitButler Stacks view** (in the Source Control sidebar): stacks → branches → commits → files. Click a file to see what that commit changed.
-- **Open in GitButler**: the GitButler button in the Source Control or Stacks view title bar opens the repository in the GitButler app. The same button on a branch or commit in the Stacks view opens GitButler with it selected.
+- **Open in GitButler**: the GitButler button in the Source Control or Stacks view title bar opens the repository in the GitButler app.
 
 When several stacks are applied, committing asks which branch to commit to, or offers to create a new one. Changes that are all assigned to one stack go to the top of that stack without asking.
 

@@ -130,18 +130,6 @@
           "when": "scmProvider == gitbutlerVscode",
           "group": "1_commit"
         }
-      ],
-      "view/item/context": [
-        {
-          "command": "gitbutlerVscode.openInGitButler",
-          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^(branch|commit)$/",
-          "group": "inline"
-        },
-        {
-          "command": "gitbutlerVscode.openInGitButler",
-          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^(branch|commit)$/",
-          "group": "navigation"
-        }
       ]
     }
   },

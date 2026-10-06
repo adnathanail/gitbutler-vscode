@@ -116,37 +116,13 @@ export class But {
   }
 
   /**
-   * A link that opens the GitButler app on this repository's workspace, or with a branch (by name)
-   * or commit (by change ID or commit ID) selected.
+   * Opens the GitButler app on this repository.
    *
-   * Uses `--print` because `but open` (as of 0.22.3) fails to open the link itself, with "Invalid
-   * path scheme: but".
+   * `but open` (as of 0.22.3) produces `but://app/project/...` links, which the GitButler app of
+   * the same version brings itself to the front for but doesn't navigate with. `but gui` switches
+   * the app to the project.
    */
-  async link(target?: string): Promise<string> {
-    const args = ["open", "--print", "--json"];
-    if (target) {
-      args.push(target);
-    }
-    const { url } = JSON.parse(await this.run(args)) as { url: string };
-    return url;
+  async gui(): Promise<void> {
+    await this.run(["gui"]);
   }
 }
-
-/**
- * Opens URLs with the operating system's handler. A mutable object so tests can replace `open`.
- *
- * `vscode.env.openExternal` isn't used because it re-encodes the URL's query, which breaks
- * GitButler's branch and commit links (`?stacks=branch:refs/heads/...`).
- */
-export const externalOpener = {
-  open(url: string, log: vscode.OutputChannel): Promise<string> {
-    switch (process.platform) {
-      case "darwin":
-        return run("open", [url], process.cwd(), log);
-      case "win32":
-        return run("rundll32", ["url.dll,FileProtocolHandler", url], process.cwd(), log);
-      default:
-        return run("xdg-open", [url], process.cwd(), log);
-    }
-  },
-};
