@@ -9,9 +9,9 @@ This is an unofficial extension. It isn't affiliated with or endorsed by GitButl
 ## Features
 
 - **Source Control panel**: uncommitted changes, grouped by the stack they're assigned to. Click a file to diff it against the workspace.
-- **Commit all**: type a message and press ⌘Enter (or the ✓ in the panel title).
-- **Commit selected**: right-click one or more changes → *Commit Selected Changes*.
-- **Discard changes**: the ↶ button on a change (or right-click several → *Discard Changes*) reverts them, deleting new files. The same button on a group's header discards everything in it. Asks first, and can be undone with `but undo`.
+- **Staging**: the + button on a change (or right-click several selected changes → *Stage Changes*) moves it to *Staged Changes*, and − moves it back. The same buttons on a group's header stage or unstage everything in it. Staging is kept by the extension while the window is open: GitButler has no staging area, so the GitButler app and `but` don't see it.
+- **Commit**: type a message and press ⌘Enter (or the ✓ in the panel title). Commits the staged changes, or every change if none are staged.
+- **Discard changes**: the ↶ button on a change (or right-click several selected changes → *Discard Changes*) reverts them, deleting new files. The same button on a group's header discards everything in it. Asks first, and can be undone with `but undo`.
 - **GitButler Stacks view** (in the Source Control sidebar): stacks → branches → commits → files. Click a file to see what that commit changed.
 - **Open File**: opens the file from the working tree. It's a button in a diff's title bar, and on each change in the Source Control panel (also in its right-click menu, for several selected changes).
 - **File status letters**: uncommitted files are marked A (added), M (modified), D (deleted) or R (renamed) in the Source Control panel, Explorer and editor tabs. These appear while VS Code's Git integration is disabled. While it's enabled, Git shows its own letters.
