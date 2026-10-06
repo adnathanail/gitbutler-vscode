@@ -2,6 +2,27 @@
   "version": "0.2.0",
   "configurations": [
     {
+      // Starts the Extension Development Host with its inspector on a fixed IPv4 port and attaches
+      // to it there. "Run Extension" can fail with "Extension host did not start in 10 seconds"
+      // when the debugger tries `localhost` over IPv6 (::1) but the inspector only listens on
+      // 127.0.0.1. Reconnects when the window reloads or opens a folder, which restarts the
+      // extension host. Only one window launched this way can be open at a time.
+      //
+      // Works around https://github.com/microsoft/vscode-js-debug/issues/2416, which affects
+      // VS Code versions bundling js-debug older than 1.140.0. Once on VS Code 1.140.0 or later,
+      // remove this configuration and its task and use "Run Extension".
+      "name": "Debug Extension (IPv4)",
+      "type": "node",
+      "request": "attach",
+      "address": "127.0.0.1",
+      "port": 9333,
+      "restart": true,
+      "timeout": 30000,
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "skipFiles": ["<node_internals>/**"],
+      "preLaunchTask": "Launch Extension Development Host"
+    },
+    {
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",

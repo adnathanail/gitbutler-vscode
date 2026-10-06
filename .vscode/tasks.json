@@ -6,6 +6,22 @@
       "script": "compile",
       "group": "build",
       "problemMatcher": "$tsc"
+    },
+    {
+      // Used by the "Debug Extension (IPv4)" launch configuration.
+      "label": "Launch Extension Development Host",
+      "type": "process",
+      "command": "code",
+      "args": [
+        "--new-window",
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--inspect-extensions=9333"
+      ],
+      "dependsOn": "npm: compile",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent"
+      }
     }
   ]
 }

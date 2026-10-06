@@ -25,7 +25,9 @@ npm install
 npm run compile
 ```
 
-Press ⌃F5 (Run Without Debugging) to launch an Extension Development Host. Commands run by the extension are logged to the **GitButler** output channel.
+Press F5 to launch an Extension Development Host with the debugger attached, using the **Debug Extension (IPv4)** configuration. Close the window it opens before pressing F5 again, because only one can use its debug port at a time. Commands run by the extension are logged to the **GitButler** output channel.
+
+The standard **Run Extension** configuration is also available. If it fails with "Extension host did not start in 10 seconds", the debugger is trying to connect over IPv6 (`::1`) while the extension host only listens on `127.0.0.1`. This is [a js-debug bug](https://github.com/microsoft/vscode-js-debug/issues/2416), fixed in VS Code 1.140.0. On older versions, use **Debug Extension (IPv4)** instead, or run without debugging (⌃F5).
 
 ## Tests
 
