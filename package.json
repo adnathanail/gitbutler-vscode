@@ -56,6 +56,18 @@
         "icon": "$(check)"
       },
       {
+        "command": "gitbutlerVscode.discardSelected",
+        "title": "Discard Changes",
+        "category": "GitButler",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "gitbutlerVscode.discardGroup",
+        "title": "Discard All Changes",
+        "category": "GitButler",
+        "icon": "$(discard)"
+      },
+      {
         "command": "gitbutlerVscode.openChange",
         "title": "Open Changes",
         "category": "GitButler"
@@ -144,6 +156,14 @@
           "when": "false"
         },
         {
+          "command": "gitbutlerVscode.discardSelected",
+          "when": "false"
+        },
+        {
+          "command": "gitbutlerVscode.discardGroup",
+          "when": "false"
+        },
+        {
           "command": "gitbutlerVscode.openChange",
           "when": "false"
         },
@@ -192,6 +212,13 @@
           "group": "navigation"
         }
       ],
+      "scm/resourceGroup/context": [
+        {
+          "command": "gitbutlerVscode.discardGroup",
+          "when": "scmProvider == gitbutlerVscode",
+          "group": "inline"
+        }
+      ],
       "scm/resourceState/context": [
         {
           "command": "gitbutlerVscode.openFile",
@@ -199,9 +226,14 @@
           "group": "inline@1"
         },
         {
-          "command": "gitbutlerVscode.commitSelected",
+          "command": "gitbutlerVscode.discardSelected",
           "when": "scmProvider == gitbutlerVscode",
           "group": "inline@2"
+        },
+        {
+          "command": "gitbutlerVscode.commitSelected",
+          "when": "scmProvider == gitbutlerVscode",
+          "group": "inline@3"
         },
         {
           "command": "gitbutlerVscode.openFile",
@@ -212,6 +244,11 @@
           "command": "gitbutlerVscode.commitSelected",
           "when": "scmProvider == gitbutlerVscode",
           "group": "1_commit"
+        },
+        {
+          "command": "gitbutlerVscode.discardSelected",
+          "when": "scmProvider == gitbutlerVscode",
+          "group": "2_modification"
         }
       ]
     }

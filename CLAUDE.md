@@ -34,12 +34,14 @@ Everything goes through `but … --json`:
 | --- | --- |
 | Status | `but status -f --json` |
 | Commit | `but commit --json -m <msg> [--branch [<name>]] -- <paths>` |
+| Discard | `but discard --json -- <paths>` |
 | Open in GitButler | `but gui` |
 
 The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins. Behaviour of `but` the extension relies on:
 
 - `but commit` accepts plain repo-relative paths as well as CLI IDs. Uncommitted-file CLI IDs change whenever the workspace changes, so the extension always passes paths and never caches CLI IDs.
 - Flags must come before `--`, or they're treated as paths. `--` is needed so paths starting with `-` aren't read as flags.
+- `but discard` also accepts plain paths, and errors on paths with no uncommitted changes. With no paths it discards every uncommitted change, so the extension never calls it without any. Discarding deletes new files, and is recorded in the oplog, so `but undo` restores everything, including deleted new files.
 - `--branch` with no value creates a new branch with a generated name. A name that doesn't exist creates a new unstacked branch.
 - With more than one stack applied, `but commit` fails unless `--branch` is given. With one stack it commits to the tip of that stack, and with none it creates a branch.
 - The JSON returned by `but commit` includes `branch` only when the commit created a new branch.
@@ -65,6 +67,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - **The status bar entry is a `SourceControl.statusBarCommands` command**, not a separate status bar item, so VS Code shows it for the active repository as it does the Git extension's branch. Status bar text can only show icons from fonts, hence the icon font.
 - **A/M/D/R letters on uncommitted files come from a `FileDecorationProvider`, only while VS Code's Git decorations are off.** Source control resources can't show a description, and the Git extension decorates the same file URIs, so with it on each letter would appear twice. The provider steps aside unless `git.enabled` or `git.decorations.enabled` is `false` for the repository root, or the Git extension isn't installed or enabled. Its colours are its own (`gitbutlerVscode.*ResourceForeground`, defaulting to Git's), since Git's colour IDs disappear when the Git extension is disabled. New files are `A`, not Git's `U` (untracked), because that's what `but` reports.
 - **The Open File button on diffs mirrors the Git extension's.** In a diff, `resourceScheme` is the right-hand side's. Git shows its button on every diff whose right side is `file:` or `git:`, while its integration is on. This extension's button shows on `gitbutler-vscode-rev:` diffs (committed changes), and on `file:` diffs only while Git's button doesn't, so there's never two. It opens the working tree file, keeping the cursor position from the diff. Source Control rows have it inline and in their context menu, hidden for deleted files using the change type, which `Repository` sets as each resource's `contextValue` (`scmResourceState` in menus).
+- **Discarding asks first, in a modal dialog**, as the Git extension does. The Source Control panel has a discard button on each change (`discardSelected`, which gets the selection) and on each group header (`discardGroup`, which gets the group).
 - **Error notifications don't block.** `showError` fires and forgets, so commands finish when their work does, and tests don't hang waiting for a notification to be dismissed. Errors are also emitted on `ExtensionApi.onDidShowError` for tests.
 - **Discovery** runs on activation, when workspace folders change, and when any `.git/HEAD` changes (debounced), so `but setup`/`but teardown` in an open folder are noticed. Runs are serialised, and existing `Repository` objects are kept so their views don't reset.
 - **Git integration suggestions** are shown once per change in whether a folder is managed by GitButler. Disabling writes `git.enabled: false` to workspace settings (folder settings in a multi-root workspace) and records the folder and settings level in workspace state. Re-enabling removes the setting rather than setting it to `true`. If the user changed the setting since, the record is dropped silently.
@@ -85,7 +88,7 @@ Helpers in `src/test/helpers.ts`:
 
 - `useTestRepo()` gives each test its own fresh GitButler repository, separate from the workspace folder.
 - `collectErrors(api)` records error notifications, so tests can assert none appeared.
-- `stubInformationMessage(answer)` replaces `vscode.window.showInformationMessage` to answer prompts.
+- `stubInformationMessage(answer)` and `stubWarningMessage(answer)` replace `vscode.window.showInformationMessage` and `showWarningMessage` to answer prompts, including modal ones.
 - `fakeBut(exitCode)` in `openInGitButler.test.ts` points `gitbutlerVscode.butPath` at a script that records its arguments, so tests of `but gui` don't launch the GitButler app.
 - `waitFor(condition, message)` polls for asynchronous effects such as rediscovery.
 

@@ -113,17 +113,31 @@ export function activeDiff(): vscode.TabInputTextDiff | undefined {
  * Replaces `vscode.window.showInformationMessage` with one that records messages and answers with
  * `answer`, or with what `answer` returns given the message and its buttons.
  */
-export function stubInformationMessage(
-  answer?: string | ((message: string, items: string[]) => string | undefined),
+export function stubInformationMessage(answer?: MessageAnswer): { calls: string[]; restore(): void } {
+  return stubMessage("showInformationMessage", answer);
+}
+
+/** As `stubInformationMessage`, for `vscode.window.showWarningMessage`. */
+export function stubWarningMessage(answer?: MessageAnswer): { calls: string[]; restore(): void } {
+  return stubMessage("showWarningMessage", answer);
+}
+
+type MessageAnswer = string | ((message: string, items: string[]) => string | undefined);
+
+function stubMessage(
+  name: "showInformationMessage" | "showWarningMessage",
+  answer?: MessageAnswer,
 ): { calls: string[]; restore(): void } {
-  const window = vscode.window as { showInformationMessage: unknown };
-  const original = window.showInformationMessage;
+  const window = vscode.window as Record<typeof name, unknown>;
+  const original = window[name];
   const calls: string[] = [];
-  window.showInformationMessage = async (message: string, ...items: string[]) => {
+  window[name] = async (message: string, ...rest: unknown[]) => {
     calls.push(message);
+    // Modal messages pass an options object before the buttons.
+    const items = rest.filter((item): item is string => typeof item === "string");
     return typeof answer === "function" ? answer(message, items) : answer;
   };
-  return { calls, restore: () => (window.showInformationMessage = original) };
+  return { calls, restore: () => (window[name] = original) };
 }
 
 /** An in-memory stand-in for `ExtensionContext.workspaceState`. */

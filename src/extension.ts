@@ -231,6 +231,17 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
       await commit(repository, paths, assignedStack(repository.status, paths)).catch(showError);
     }),
+
+    // Invoked from the context menu or inline button on one or more selected changes in the
+    // Source Control panel.
+    vscode.commands.registerCommand("gitbutlerVscode.discardSelected", async (...selected: ChangeResource[]) => {
+      await discard(selected).catch(showError);
+    }),
+
+    // Invoked from a resource group's inline button in the Source Control panel, with the group.
+    vscode.commands.registerCommand("gitbutlerVscode.discardGroup", async (group?: vscode.SourceControlResourceGroup) => {
+      await discard((group?.resourceStates ?? []) as ChangeResource[]).catch(showError);
+    }),
   );
 
   return { ready: discover(), repositories: () => repositories, onDidShowError: errorEmitter.event, revisions };
@@ -332,6 +343,36 @@ async function pickBranch(status: Status, preferred?: Stack): Promise<string | u
   }
   // An unknown branch name creates a new unstacked branch; an empty one generates a name.
   return name.trim();
+}
+
+/** Discards the given uncommitted changes, all from one repository, after asking for confirmation. */
+async function discard(resources: ChangeResource[]): Promise<void> {
+  resources = resources.filter((r) => r?.repository);
+  if (resources.length === 0) {
+    return;
+  }
+  const repository = resources[0].repository;
+  const changes = resources.filter((r) => r.repository === repository).map((r) => r.change);
+
+  const target = changes.length === 1 ? changes[0].filePath : `${changes.length} files`;
+  const deletes = changes.some((c) => c.changeType === "added");
+  const choice = await vscode.window.showWarningMessage(
+    `Discard changes in ${target}?`,
+    {
+      modal: true,
+      detail: `${deletes ? "New files will be deleted. " : ""}This can be undone with \`but undo\`.`,
+    },
+    "Discard Changes",
+  );
+  if (choice !== "Discard Changes") {
+    return;
+  }
+
+  try {
+    await repository.but.discard(changes.map((c) => c.filePath));
+  } finally {
+    await repository.refresh();
+  }
 }
 
 async function commit(repository: Repository, paths: string[], preferred?: Stack): Promise<void> {
