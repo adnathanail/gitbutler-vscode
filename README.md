@@ -12,6 +12,7 @@ This is an unofficial extension. It isn't affiliated with or endorsed by GitButl
 - **Commit all**: type a message and press ⌘Enter (or the ✓ in the panel title).
 - **Commit selected**: right-click one or more changes → *Commit Selected Changes*.
 - **GitButler Stacks view** (in the Source Control sidebar): stacks → branches → commits → files. Click a file to see what that commit changed.
+- **Status bar**: the applied branches, shown bottom left like the Git extension's current branch. Stacks are listed left to right as in the GitButler app, separated by `|`, with each stack's branches from top to bottom. Click it to open the repository in GitButler.
 - **Open in GitButler**: the GitButler button in the Source Control or Stacks view title bar opens the repository in the GitButler app.
 
 When several stacks are applied, committing asks which branch to commit to, or offers to create a new one. Changes that are all assigned to one stack go to the top of that stack without asking.

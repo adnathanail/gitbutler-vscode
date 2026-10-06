@@ -120,6 +120,7 @@ export class Repository implements vscode.Disposable {
       }
       this.updateHead();
       this.updateResources();
+      this.updateStatusBar();
       this.onDidChangeEmitter.fire();
     })();
     try {
@@ -173,6 +174,28 @@ export class Repository implements vscode.Disposable {
 
     const assigned = status?.stacks.reduce((n, s) => n + s.assignedChanges.length, 0) ?? 0;
     this.sourceControl.count = (status?.uncommittedChanges.length ?? 0) + assigned;
+  }
+
+  /**
+   * Shows the applied branches in the status bar, as the Git extension shows the current branch.
+   * Stacks are listed left to right, separated by `|`, and each stack's branches from top to bottom.
+   */
+  private updateStatusBar(): void {
+    const command = { command: "gitbutlerVscode.openInGitButler", arguments: [this.sourceControl] };
+    const stacks = this.status?.stacks.map((s) => s.branches.map((b) => b.name)) ?? [];
+    let title: string;
+    let tooltip: string;
+    if (!this.status) {
+      title = "$(gitbutler-vscode-logo) $(warning)";
+      tooltip = `GitButler: ${this.error?.split("\n")[0] ?? "status not loaded"}`;
+    } else if (stacks.length === 0) {
+      title = "$(gitbutler-vscode-logo) No branches";
+      tooltip = "GitButler: no branches applied";
+    } else {
+      title = `$(gitbutler-vscode-logo) ${stacks.map((branches) => branches.join(", ")).join(" | ")}`;
+      tooltip = ["Applied GitButler branches, one stack per line, top of stack first:", ...stacks.map((branches) => branches.join(", "))].join("\n");
+    }
+    this.sourceControl.statusBarCommands = [{ ...command, title, tooltip: `${tooltip}\n\nClick to open in GitButler` }];
   }
 
   private resource(change: FileChange, stack?: Stack): ChangeResource {
