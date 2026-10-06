@@ -59,6 +59,55 @@ describe("opening changes", () => {
     assert.strictEqual(right.getText(), "one\n");
   });
 
+  it("opens the file from an uncommitted change's diff, keeping the cursor", async () => {
+    repo().write("a.txt", "one\ntwo\nthree\n");
+    const repository = await repo().repository();
+    await repository.openUncommittedChange({ cliId: "", filePath: "a.txt", changeType: "added" });
+    const diffEditor = vscode.window.activeTextEditor!;
+    diffEditor.selection = new vscode.Selection(2, 1, 2, 1);
+
+    // Called the same way the diff editor's title bar calls it.
+    await vscode.commands.executeCommand("gitbutlerVscode.openFile", activeDiff()!.modified);
+
+    assert.strictEqual(activeDiff(), undefined, "still showing a diff");
+    const editor = vscode.window.activeTextEditor;
+    assert.strictEqual(editor?.document.uri.toString(), vscode.Uri.file(repo().path("a.txt")).toString());
+    assert.deepStrictEqual(editor.selection.active, new vscode.Position(2, 1));
+  });
+
+  it("opens the working tree file from a committed change's diff", async () => {
+    repo().commit("a.txt", "one\n", "Add a", "feature");
+    repo().write("a.txt", "changed since\n");
+    const repository = await repo().repository();
+    const commitId = repo().status().stacks[0].branches[0].commits[0].commitId;
+    await repository.openCommittedChange(commitId, { cliId: "", filePath: "a.txt", changeType: "added" });
+
+    // From the command palette, which passes no arguments.
+    await vscode.commands.executeCommand("gitbutlerVscode.openFile");
+
+    const editor = vscode.window.activeTextEditor;
+    assert.strictEqual(editor?.document.uri.toString(), vscode.Uri.file(repo().path("a.txt")).toString());
+    assert.strictEqual(editor.document.getText(), "changed since\n");
+  });
+
+  it("shows an error when opening a file that has since been deleted", async () => {
+    repo().commit("a.txt", "one\n", "Add a", "feature");
+    repo().remove("a.txt");
+    const repository = await repo().repository();
+    const commitId = repo().status().stacks[0].branches[0].commits[0].commitId;
+    await repository.openCommittedChange(commitId, { cliId: "", filePath: "a.txt", changeType: "added" });
+
+    const { errors, dispose } = collectErrors(api);
+    try {
+      await vscode.commands.executeCommand("gitbutlerVscode.openFile", activeDiff()!.modified);
+    } finally {
+      dispose();
+    }
+
+    assert.strictEqual(errors.length, 1);
+    assert.match(errors[0], /a\.txt doesn't exist/);
+  });
+
   it("shows new files as empty at HEAD instead of failing", async () => {
     repo().write("new.txt", "content\n");
     const document = await vscode.workspace.openTextDocument(
