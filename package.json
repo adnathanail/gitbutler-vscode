@@ -61,6 +61,12 @@
         "category": "GitButler"
       },
       {
+        "command": "gitbutlerVscode.openFile",
+        "title": "Open File",
+        "category": "GitButler",
+        "icon": "$(go-to-file)"
+      },
+      {
         "command": "gitbutlerVscode.openInGitButler",
         "title": "Open in GitButler",
         "category": "GitButler",
@@ -142,6 +148,10 @@
           "when": "false"
         },
         {
+          "command": "gitbutlerVscode.openFile",
+          "when": "isInDiffEditor && (resourceScheme == gitbutler-vscode-rev || resourceScheme == file && gitbutlerVscode.hasRepository && (!config.git.enabled || git.missing || gitOpenRepositoryCount == 0))"
+        },
+        {
           "command": "gitbutlerVscode.openInGitButler",
           "when": "gitbutlerVscode.hasRepository"
         }
@@ -155,6 +165,13 @@
         {
           "command": "gitbutlerVscode.refresh",
           "when": "view == gitbutlerVscode.stacks",
+          "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "gitbutlerVscode.openFile",
+          "when": "isInDiffEditor && (resourceScheme == gitbutler-vscode-rev || resourceScheme == file && gitbutlerVscode.hasRepository && (!config.git.enabled || git.missing || gitOpenRepositoryCount == 0))",
           "group": "navigation"
         }
       ],

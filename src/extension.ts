@@ -150,6 +150,28 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }),
 
+    // Invoked from a diff editor's title bar (with the URI of the diff's right side), or the command
+    // palette (with nothing, for the active diff). Opens the working tree file, keeping the cursor.
+    vscode.commands.registerCommand("gitbutlerVscode.openFile", async (arg?: unknown) => {
+      const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+      const uri = arg instanceof vscode.Uri ? arg : input instanceof vscode.TabInputTextDiff ? input.modified : undefined;
+      if (!uri) {
+        return;
+      }
+      const file = vscode.Uri.file(uri.fsPath);
+      try {
+        await vscode.workspace.fs.stat(file);
+      } catch {
+        return showError(`${vscode.workspace.asRelativePath(file)} doesn't exist in the working tree.`);
+      }
+      const editor = vscode.window.activeTextEditor;
+      const fromDiff = editor?.document.uri.toString() === uri.toString();
+      await vscode.commands.executeCommand("vscode.open", file, {
+        selection: fromDiff ? editor.selection : undefined,
+        viewColumn: fromDiff ? editor.viewColumn : undefined,
+      } satisfies vscode.TextDocumentShowOptions);
+    }),
+
     // Invoked from the SCM title bar (with the SourceControl), the Stacks view title bar or the
     // command palette.
     vscode.commands.registerCommand("gitbutlerVscode.openInGitButler", async (arg?: vscode.SourceControl) => {

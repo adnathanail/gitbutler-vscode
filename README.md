@@ -12,6 +12,7 @@ This is an unofficial extension. It isn't affiliated with or endorsed by GitButl
 - **Commit all**: type a message and press ⌘Enter (or the ✓ in the panel title).
 - **Commit selected**: right-click one or more changes → *Commit Selected Changes*.
 - **GitButler Stacks view** (in the Source Control sidebar): stacks → branches → commits → files. Click a file to see what that commit changed.
+- **Open File**: the button in a diff's title bar opens the file from the working tree.
 - **File status letters**: uncommitted files are marked A (added), M (modified), D (deleted) or R (renamed) in the Source Control panel, Explorer and editor tabs. These appear while VS Code's Git integration is disabled. While it's enabled, Git shows its own letters.
 - **Status bar**: the applied branches, shown bottom left like the Git extension's current branch. Stacks are listed left to right as in the GitButler app, separated by `|`, with each stack's branches from top to bottom. Click it to open the repository in GitButler.
 - **Open in GitButler**: the GitButler button in the Source Control or Stacks view title bar opens the repository in the GitButler app.
