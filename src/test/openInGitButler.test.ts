@@ -2,6 +2,7 @@ import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { externalOpener } from "../but";
 import type { ExtensionApi } from "../extension";
 import { StacksProvider } from "../stacksView";
 import { activate, collectErrors, useTestRepo } from "./helpers";
@@ -29,22 +30,43 @@ async function fakeBut(output: object): Promise<{ invocation(): { cwd: string; a
   };
 }
 
+const LINK = "but://app/project/eA/workspace?stacks=branch:refs/heads/feature";
+
 describe("opening in GitButler", () => {
   const repo = useTestRepo();
   let api: ExtensionApi;
   let fake: Awaited<ReturnType<typeof fakeBut>> | undefined;
+  /** URLs passed to the operating system's opener, which is replaced so the app doesn't launch. */
+  let opened: string[];
+  let openFails = false;
+  const originalOpen = externalOpener.open;
 
   before(async () => {
     api = await activate();
   });
 
+  beforeEach(() => {
+    opened = [];
+    openFails = false;
+    externalOpener.open = async (url) => {
+      opened.push(url);
+      if (openFails) {
+        throw new Error("No application knows how to open but: URLs");
+      }
+      return "";
+    };
+  });
+
   afterEach(async () => {
+    externalOpener.open = originalOpen;
     await fake?.restore();
     fake = undefined;
   });
 
+  // Regression: `but open` fails to open links itself with "Invalid path scheme: but", so the
+  // extension gets the link with --print and opens it unchanged.
   it("opens the workspace from the Source Control title bar", async () => {
-    fake = await fakeBut({ url: "but://app/project/x/workspace", opened: true });
+    fake = await fakeBut({ url: LINK, opened: false });
     const [repository] = api.repositories();
 
     const { errors, dispose } = collectErrors(api);
@@ -57,7 +79,8 @@ describe("opening in GitButler", () => {
     assert.deepStrictEqual(errors, []);
     const { cwd, args } = fake.invocation();
     assert.strictEqual(fs.realpathSync(cwd), fs.realpathSync(repository.root));
-    assert.deepStrictEqual(args, ["open", "--json"]);
+    assert.deepStrictEqual(args, ["open", "--print", "--json"]);
+    assert.deepStrictEqual(opened, [LINK]);
   });
 
   it("opens a branch or commit from the Stacks view with it selected", async () => {
@@ -68,18 +91,20 @@ describe("opening in GitButler", () => {
     const [commit] = provider.getChildren(branch);
     assert.strictEqual(provider.getTreeItem(branch).contextValue, "branch");
     assert.strictEqual(provider.getTreeItem(commit).contextValue, "commit");
-    fake = await fakeBut({ url: "but://app/project/x/workspace", opened: true });
+    fake = await fakeBut({ url: LINK, opened: false });
 
     await vscode.commands.executeCommand("gitbutlerVscode.openInGitButler", branch);
-    assert.deepStrictEqual(fake.invocation().args, ["open", "--json", "feature"]);
+    assert.deepStrictEqual(fake.invocation().args, ["open", "--print", "--json", "feature"]);
 
     await vscode.commands.executeCommand("gitbutlerVscode.openInGitButler", commit);
     const changeId = repository.status!.stacks[0].branches[0].commits[0].changeId!;
-    assert.deepStrictEqual(fake.invocation().args, ["open", "--json", changeId]);
+    assert.deepStrictEqual(fake.invocation().args, ["open", "--print", "--json", changeId]);
+    assert.deepStrictEqual(opened, [LINK, LINK]);
   });
 
-  it("shows an error when GitButler doesn't open", async () => {
-    fake = await fakeBut({ url: "but://app/project/x/workspace", opened: false });
+  it("shows an error when the link can't be opened", async () => {
+    fake = await fakeBut({ url: LINK, opened: false });
+    openFails = true;
 
     const { errors, dispose } = collectErrors(api);
     try {
@@ -89,6 +114,6 @@ describe("opening in GitButler", () => {
     }
 
     assert.strictEqual(errors.length, 1);
-    assert.match(errors[0], /didn't open/);
+    assert.match(errors[0], /No application knows how to open/);
   });
 });

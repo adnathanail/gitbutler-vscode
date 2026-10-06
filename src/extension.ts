@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { FileChange, run, Stack, Status } from "./but";
+import { externalOpener, FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
@@ -157,7 +157,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         repository = await resolveRepository(arg && "kind" in arg ? undefined : arg);
       }
       if (repository) {
-        await repository.but.open(target).catch(showError);
+        await repository.but
+          .link(target)
+          .then((url) => externalOpener.open(url, log))
+          .catch(showError);
       }
     }),
 
