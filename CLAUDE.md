@@ -71,6 +71,8 @@ Tests run inside a separate copy of VS Code (downloaded to `.vscode-test/`) usin
 - **The window opens on a fresh GitButler repository** in `.vscode-test/fixtures/workspace`, for discovery tests.
 - **Stored workspace state is cleared** before each run, because the fixture workspace has the same path every time.
 
+CI (`.github/workflows/ci.yml`) runs the tests on a macOS runner, after installing the latest GitButler app with `brew install --cask gitbutler` to get `but`. The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
+
 Helpers in `src/test/helpers.ts`:
 
 - `useTestRepo()` gives each test its own fresh GitButler repository, separate from the workspace folder.

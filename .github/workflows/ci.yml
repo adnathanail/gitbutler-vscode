@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    # The test setup is macOS-specific (it passes --use-mock-keychain because it replaces HOME), and
+    # `but` comes from the GitButler app, which Homebrew installs on macOS.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Installs the GitButler app, which links the `but` CLI into Homebrew's bin directory. This is
+      # the latest release, so changes in `but`'s behaviour or JSON output show up here.
+      - name: Install GitButler
+        run: |
+          brew install --cask gitbutler
+          but --version
+
+      # Downloads a copy of VS Code into .vscode-test/ and runs the tests in it, using real `but`
+      # and git.
+      - name: Test
+        run: npm test
