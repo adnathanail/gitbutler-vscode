@@ -116,6 +116,18 @@ export class But {
   }
 
   /**
+   * Discards uncommitted changes to the given repo-relative paths, deleting new files. Recorded in
+   * GitButler's oplog, so `but undo` restores them.
+   */
+  async discard(paths: string[]): Promise<void> {
+    // Without paths, `but discard` discards every uncommitted change.
+    if (paths.length === 0) {
+      return;
+    }
+    await this.run(["discard", "--json", "--", ...paths]);
+  }
+
+  /**
    * Opens the GitButler app on this repository.
    *
    * `but open` (as of 0.22.3) produces `but://app/project/...` links, which the GitButler app of
