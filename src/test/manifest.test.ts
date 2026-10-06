@@ -14,6 +14,7 @@ describe("manifest", () => {
       ...manifest.contributes.commands.map((c: { command: string }) => c.command),
       ...manifest.contributes.views.scm.map((v: { id: string }) => v.id),
       ...Object.keys(manifest.contributes.configuration.properties),
+      ...manifest.contributes.colors.map((c: { id: string }) => c.id),
     ];
     for (const id of ids) {
       assert.ok(id.startsWith("gitbutlerVscode."), `${id} should start with gitbutlerVscode.`);
