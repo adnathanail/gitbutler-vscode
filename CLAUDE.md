@@ -34,7 +34,7 @@ Everything goes through `but … --json`:
 | Commit | `but commit --json -m <msg> [--branch [<name>]] -- <paths>` |
 | Open in GitButler | `but gui` |
 
-The types in `src/but.ts` were written against `but` 0.22.3. Behaviour of `but` the extension relies on:
+The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins. Behaviour of `but` the extension relies on:
 
 - `but commit` accepts plain repo-relative paths as well as CLI IDs. Uncommitted-file CLI IDs change whenever the workspace changes, so the extension always passes paths and never caches CLI IDs.
 - Flags must come before `--`, or they're treated as paths. `--` is needed so paths starting with `-` aren't read as flags.
@@ -72,7 +72,7 @@ Tests run inside a separate copy of VS Code (downloaded to `.vscode-test/`) usin
 - **The window opens on a fresh GitButler repository** in `.vscode-test/fixtures/workspace`, for discovery tests.
 - **Stored workspace state is cleared** before each run, because the fixture workspace has the same path every time.
 
-CI (`.github/workflows/ci.yml`) runs the tests on a macOS runner, after installing the latest GitButler app with `brew install --cask gitbutler` to get `but`. The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
+Versions are pinned, because this is a personal project used with one setup: VS Code in `.vscode-test.mjs` (`version`), and GitButler in CI (`.github/workflows/ci.yml`), which downloads the app from GitButler's release URL, checks its SHA-256 and links `but` from it, as Homebrew does (Homebrew only installs the latest version). The URL format and checksums are in Homebrew's cask (`Casks/g/gitbutler.rb`). When upgrading, update both, the versions named in the README, and the version in "How the extension uses `but`". The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
 
 Helpers in `src/test/helpers.ts`:
 
