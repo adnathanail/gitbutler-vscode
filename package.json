@@ -55,6 +55,15 @@
         "command": "gitbutlerVscode.openChange",
         "title": "Open Changes",
         "category": "GitButler"
+      },
+      {
+        "command": "gitbutlerVscode.openInGitButler",
+        "title": "Open in GitButler",
+        "category": "GitButler",
+        "icon": {
+          "light": "resources/gitbutler-light.svg",
+          "dark": "resources/gitbutler-dark.svg"
+        }
       }
     ],
     "views": {
@@ -75,9 +84,18 @@
         {
           "command": "gitbutlerVscode.openChange",
           "when": "false"
+        },
+        {
+          "command": "gitbutlerVscode.openInGitButler",
+          "when": "gitbutlerVscode.hasRepository"
         }
       ],
       "view/title": [
+        {
+          "command": "gitbutlerVscode.openInGitButler",
+          "when": "view == gitbutlerVscode.stacks",
+          "group": "navigation"
+        },
         {
           "command": "gitbutlerVscode.refresh",
           "when": "view == gitbutlerVscode.stacks",
@@ -85,6 +103,11 @@
         }
       ],
       "scm/title": [
+        {
+          "command": "gitbutlerVscode.openInGitButler",
+          "when": "scmProvider == gitbutlerVscode",
+          "group": "navigation"
+        },
         {
           "command": "gitbutlerVscode.commitAll",
           "when": "scmProvider == gitbutlerVscode",
@@ -106,6 +129,18 @@
           "command": "gitbutlerVscode.commitSelected",
           "when": "scmProvider == gitbutlerVscode",
           "group": "1_commit"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitbutlerVscode.openInGitButler",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^(branch|commit)$/",
+          "group": "inline"
+        },
+        {
+          "command": "gitbutlerVscode.openInGitButler",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^(branch|commit)$/",
+          "group": "navigation"
         }
       ]
     }

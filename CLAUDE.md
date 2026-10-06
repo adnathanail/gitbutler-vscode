@@ -20,6 +20,7 @@ npx vscode-test --grep <pattern>          # run matching tests (compile first)
 | `src/stacksView.ts` | The GitButler Stacks tree view (stacks → branches → commits → files). |
 | `src/content.ts` | `RevisionFileSystemProvider`, a read-only file system serving file contents at a git revision for diffs and gutter markers. |
 | `src/gitIntegration.ts` | Suggestions to disable VS Code's built-in Git integration in GitButler repositories, and to re-enable it afterwards. |
+| `resources/` | Icons. `gitbutler-{light,dark}.svg` is a monochrome bowtie (⧓) standing in for the GitButler logo, in VS Code's toolbar icon colours. |
 | `src/test/` | Integration tests (mocha, `describe`/`it`). `helpers.ts` has the shared fixtures. |
 | `.vscode-test.mjs` | Test run configuration, including fixture setup. |
 
@@ -31,6 +32,7 @@ Everything goes through `but … --json`:
 | --- | --- |
 | Status | `but status -f --json` |
 | Commit | `but commit --json -m <msg> [--branch [<name>]] -- <paths>` |
+| Open in GitButler | `but open --json [<branch name or commit change ID>]` |
 
 The types in `src/but.ts` were written against `but` 0.22.3. Behaviour of `but` the extension relies on:
 
@@ -44,6 +46,8 @@ The types in `src/but.ts` were written against `but` 0.22.3. Behaviour of `but` 
 - `HEAD` is the GitButler workspace commit, a merge of every applied stack, so `HEAD:<path>` is the baseline for uncommitted changes.
 - `renamed` changes don't report the previous path.
 - `but setup` registers the repository in a global GitButler project list (`~/Library/Application Support/com.gitbutler.app/projects.json` on macOS). It finds this through `HOME`.
+- `but open --json` prints `{"url": ..., "opened": ...}`. With `--print` it doesn't open the app and `opened` is false. Commits are best addressed by change ID, which survives rewrites.
+- When `but` detects it's being run by a coding agent, its human-readable output may start with a notice asking the agent to install a GitButler skill. `--json` output doesn't include it.
 - `but teardown` can't run unattended in a fresh repository: it needs a branch to check out (`--checkout-to`).
 
 ## Design decisions
@@ -71,6 +75,7 @@ Helpers in `src/test/helpers.ts`:
 - `useTestRepo()` gives each test its own fresh GitButler repository, separate from the workspace folder.
 - `collectErrors(api)` records error notifications, so tests can assert none appeared.
 - `stubInformationMessage(answer)` replaces `vscode.window.showInformationMessage` to answer prompts.
+- `fakeBut(output)` in `openInGitButler.test.ts` points `gitbutlerVscode.butPath` at a script that records its arguments, so tests of `but open` don't launch the GitButler app.
 - `waitFor(condition, message)` polls for asynchronous effects such as rediscovery.
 
 Tests of commands should call them the same way the UI does, including arguments VS Code adds. When fixing a bug, add a regression test whose comment starts with `Regression:` and describes the symptom, and check that it fails without the fix.

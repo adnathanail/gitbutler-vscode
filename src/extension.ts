@@ -3,7 +3,7 @@ import { FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
-import { behindDescription, StacksProvider } from "./stacksView";
+import { behindDescription, Node, StacksProvider } from "./stacksView";
 
 const WORKSPACE_BRANCH = "gitbutler/workspace";
 
@@ -142,6 +142,22 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         }
       } catch (err) {
         showError(err);
+      }
+    }),
+
+    // Invoked from the SCM or Stacks view title bars, the command palette, or a branch or commit in
+    // the Stacks view, which opens GitButler with it selected.
+    vscode.commands.registerCommand("gitbutlerVscode.openInGitButler", async (arg?: vscode.SourceControl | Node) => {
+      let repository: Repository | undefined;
+      let target: string | undefined;
+      if (arg && "kind" in arg && (arg.kind === "branch" || arg.kind === "commit")) {
+        repository = arg.repository;
+        target = arg.kind === "branch" ? arg.branch.name : (arg.commit.changeId ?? arg.commit.commitId);
+      } else {
+        repository = await resolveRepository(arg && "kind" in arg ? undefined : arg);
+      }
+      if (repository) {
+        await repository.but.open(target).catch(showError);
       }
     }),
 

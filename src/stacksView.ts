@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { Branch, Commit, FileChange, Stack } from "./but";
 import { changeLetter, OpenChangeTarget, Repository } from "./repository";
 
-type Node =
+export type Node =
   | { kind: "repository"; repository: Repository }
   | { kind: "message"; text: string; error?: boolean }
   | { kind: "stack"; repository: Repository; stack: Stack }
@@ -106,6 +106,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node> {
             : vscode.TreeItemCollapsibleState.None,
         );
         item.iconPath = new vscode.ThemeIcon("git-branch");
+        item.contextValue = "branch";
         const parts = [humanise(branch.branchStatus)];
         if (branch.upstreamCommits.length > 0) {
           parts.push(`${branch.upstreamCommits.length} upstream`);
@@ -118,6 +119,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node> {
         const { commit } = node;
         const [subject] = commit.message.split("\n");
         const item = new vscode.TreeItem(subject || "(no message)", vscode.TreeItemCollapsibleState.Collapsed);
+        item.contextValue = "commit";
         item.iconPath = commit.conflicted
           ? new vscode.ThemeIcon("warning", new vscode.ThemeColor("list.warningForeground"))
           : new vscode.ThemeIcon("git-commit");

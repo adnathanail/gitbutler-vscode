@@ -114,4 +114,19 @@ export class But {
     args.push("--", ...paths);
     await this.run(args);
   }
+
+  /**
+   * Opens the GitButler app on this repository's workspace, or with a branch (by name) or commit
+   * (by change ID or commit ID) selected.
+   */
+  async open(target?: string): Promise<void> {
+    const args = ["open", "--json"];
+    if (target) {
+      args.push(target);
+    }
+    const result = JSON.parse(await this.run(args)) as { url?: string; opened?: boolean };
+    if (result.opened === false) {
+      throw new CommandError(`GitButler didn't open ${result.url}. Is the GitButler app installed?`);
+    }
+  }
 }
