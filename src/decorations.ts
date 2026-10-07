@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { ChangeType } from "./but";
+import { ChangeType, FileChange } from "./but";
 import { changeLetter, Repository } from "./repository";
 
 const COLORS: Record<ChangeType, string> = {
@@ -10,12 +10,29 @@ const COLORS: Record<ChangeType, string> = {
   renamed: "gitbutlerVscode.renamedResourceForeground",
 };
 
+/** Scheme of the URIs of files shown under commits in the Stacks view. */
+const COMMITTED_CHANGE_SCHEME = "gitbutler-vscode-change";
+
+/**
+ * A URI for a file changed by a commit, for its item in the Stacks view. It gives the item the
+ * file's icon, and a decoration for the commit's change rather than the working tree file's.
+ */
+export function committedChangeUri(root: string, commitId: string, change: FileChange): vscode.Uri {
+  return vscode.Uri.file(path.join(root, change.filePath)).with({
+    scheme: COMMITTED_CHANGE_SCHEME,
+    query: JSON.stringify({ commitId, changeType: change.changeType }),
+  });
+}
+
 /**
  * Shows the change type of uncommitted files (A/M/D/R, coloured) in the Source Control panel,
  * Explorer and editor tabs.
  *
  * VS Code's Git extension decorates the same files, so decorations are only provided where it
  * doesn't: when Git integration or its decorations are disabled, or the Git extension isn't present.
+ *
+ * Also shows the change type of files under commits in the Stacks view (`committedChangeUri`),
+ * which the Git extension never decorates.
  */
 export class ChangeDecorationProvider implements vscode.FileDecorationProvider, vscode.Disposable {
   private readonly onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri[] | undefined>();
@@ -38,6 +55,10 @@ export class ChangeDecorationProvider implements vscode.FileDecorationProvider, 
   }
 
   provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
+    if (uri.scheme === COMMITTED_CHANGE_SCHEME) {
+      const { changeType } = JSON.parse(uri.query) as { changeType: ChangeType };
+      return decoration(changeType);
+    }
     if (uri.scheme !== "file") {
       return undefined;
     }
@@ -51,13 +72,8 @@ export class ChangeDecorationProvider implements vscode.FileDecorationProvider, 
       const change = [...(status?.uncommittedChanges ?? []), ...(status?.stacks.flatMap((s) => s.assignedChanges) ?? [])]
         .find((c) => c.filePath === filePath);
       if (change) {
-        return {
-          badge: changeLetter(change.changeType),
-          tooltip: humanise(change.changeType),
-          color: new vscode.ThemeColor(COLORS[change.changeType]),
-          // Deleted files aren't in the Explorer, so their folders aren't marked either, as in Git.
-          propagate: change.changeType !== "removed",
-        };
+        // Deleted files aren't in the Explorer, so their folders aren't marked either, as in Git.
+        return { ...decoration(change.changeType), propagate: change.changeType !== "removed" };
       }
     }
     return undefined;
@@ -66,6 +82,10 @@ export class ChangeDecorationProvider implements vscode.FileDecorationProvider, 
   dispose(): void {
     this.disposables.forEach((d) => d.dispose());
   }
+}
+
+function decoration(type: ChangeType): vscode.FileDecoration {
+  return { badge: changeLetter(type), tooltip: humanise(type), color: new vscode.ThemeColor(COLORS[type]) };
 }
 
 /** Whether VS Code's Git extension shows its own decorations for files in the repository. */

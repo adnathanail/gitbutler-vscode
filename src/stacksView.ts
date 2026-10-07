@@ -1,8 +1,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { Branch, Commit, FileChange, Stack } from "./but";
-import { RevisionFileSystemProvider } from "./content";
-import { changeLetter, OpenChangeTarget, Repository } from "./repository";
+import { committedChangeUri } from "./decorations";
+import { OpenChangeTarget, Repository } from "./repository";
 
 export type StacksNode =
   | { kind: "repository"; repository: Repository }
@@ -169,13 +169,12 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
       }
       case "file": {
         const { change, commit, repository } = node;
-        // At the commit, rather than the working tree file, so the item gets the file's icon without
-        // decorations for its uncommitted changes. A deleted file would otherwise look deleted in
-        // the commit that added it.
-        const item = new vscode.TreeItem(RevisionFileSystemProvider.uri(repository.root, change.filePath, commit.commitId));
+        // Not the working tree file's URI, which would have the decoration for its uncommitted
+        // changes: a file deleted since would look deleted in the commit that added it.
+        const item = new vscode.TreeItem(committedChangeUri(repository.root, commit.commitId, change));
         item.label = path.basename(change.filePath);
         const dir = path.dirname(change.filePath);
-        item.description = `${changeLetter(change.changeType)}${dir === "." ? "" : `  ${dir}`}`;
+        item.description = dir === "." ? undefined : dir;
         item.tooltip = `${change.filePath} (${change.changeType})`;
         item.command = {
           command: "gitbutlerVscode.openChange",
