@@ -2,7 +2,7 @@ import * as assert from "node:assert";
 import * as vscode from "vscode";
 import type { ExtensionApi } from "../extension";
 import { StacksProvider } from "../stacksView";
-import { activate, collectErrors, stubInformationMessage, TestRepo, useTestRepo } from "./helpers";
+import { activate, collectErrors, stubInformationMessage, stubWarningMessage, TestRepo, useTestRepo } from "./helpers";
 
 describe("dropping changes onto a commit", () => {
   const repo = useTestRepo();
@@ -28,18 +28,28 @@ describe("dropping changes onto a commit", () => {
     return node;
   }
 
-  /** Drops files as the Source Control panel and Explorer do, failing on any error notification. */
-  async function drop(provider: StacksProvider, target: Parameters<StacksProvider["handleDrop"]>[0], ...files: string[]): Promise<string[]> {
+  /**
+   * Drops files as the Source Control panel and Explorer do, accepting the confirmation or, if
+   * `confirm` is false, dismissing it. Returns the error notifications and confirmation prompts shown.
+   */
+  async function drop(
+    provider: StacksProvider,
+    target: Parameters<StacksProvider["handleDrop"]>[0],
+    files: string[],
+    confirm = true,
+  ): Promise<{ errors: string[]; prompts: string[] }> {
     const dataTransfer = new vscode.DataTransfer();
     const uriList = files.map((f) => vscode.Uri.file(repo().path(f)).toString()).join("\r\n");
     dataTransfer.set("text/uri-list", new vscode.DataTransferItem(uriList));
+    const prompts = stubWarningMessage(confirm ? "Add to Commit" : undefined);
     const { errors, dispose } = collectErrors(api);
     try {
       await provider.handleDrop(target, dataTransfer);
     } finally {
+      prompts.restore();
       dispose();
     }
-    return errors;
+    return { errors, prompts: prompts.calls };
   }
 
   function commitFiles(r: TestRepo, message: string): string[] | undefined {
@@ -53,9 +63,10 @@ describe("dropping changes onto a commit", () => {
     repo().write("-new.txt", "new\n");
     repo().write("c.txt", "c\n");
 
-    const errors = await drop(provider, commitNode(provider, "First"), "a.txt", "-new.txt");
+    const { errors, prompts } = await drop(provider, commitNode(provider, "First"), ["a.txt", "-new.txt"]);
 
     assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(prompts, ['Add the changes in 2 files to "First"?']);
     assert.deepStrictEqual(commitFiles(repo(), "First"), ["-new.txt", "a.txt"]);
     assert.deepStrictEqual(commitFiles(repo(), "Second"), ["b.txt"]);
     assert.deepStrictEqual(repo().status().uncommittedChanges.map((c) => c.filePath), ["c.txt"]);
@@ -67,20 +78,34 @@ describe("dropping changes onto a commit", () => {
     repo().write("c.txt", "c\n");
     const [file] = provider.getChildren(commitNode(provider, "Second"));
 
-    const errors = await drop(provider, file, "c.txt");
+    const { errors, prompts } = await drop(provider, file, ["c.txt"]);
 
     assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(prompts, ['Add the changes in c.txt to "Second"?']);
     assert.deepStrictEqual(commitFiles(repo(), "Second"), ["b.txt", "c.txt"]);
   });
 
   it("shows an error when none of the dropped files have uncommitted changes", async () => {
     const provider = await setUp();
 
-    const errors = await drop(provider, commitNode(provider, "First"), "b.txt");
+    const { errors, prompts } = await drop(provider, commitNode(provider, "First"), ["b.txt"]);
 
+    assert.deepStrictEqual(prompts, []);
     assert.strictEqual(errors.length, 1);
     assert.match(errors[0], /Only files with uncommitted changes/);
     assert.deepStrictEqual(commitFiles(repo(), "First"), ["a.txt"]);
+  });
+
+  it("does nothing if not confirmed", async () => {
+    const provider = await setUp();
+    repo().write("c.txt", "c\n");
+
+    const { errors, prompts } = await drop(provider, commitNode(provider, "First"), ["c.txt"], false);
+
+    assert.deepStrictEqual(errors, []);
+    assert.strictEqual(prompts.length, 1);
+    assert.deepStrictEqual(commitFiles(repo(), "First"), ["a.txt"]);
+    assert.deepStrictEqual(repo().status().uncommittedChanges.map((c) => c.filePath), ["c.txt"]);
   });
 
   it("explains where to drop when dropped onto a branch", async () => {
@@ -90,7 +115,7 @@ describe("dropping changes onto a commit", () => {
 
     const messages = stubInformationMessage();
     try {
-      await drop(provider, branch, "c.txt");
+      await drop(provider, branch, ["c.txt"]);
     } finally {
       messages.restore();
     }
