@@ -93,6 +93,12 @@
         "icon": "$(comment)"
       },
       {
+        "command": "gitbutlerVscode.renameBranch",
+        "title": "Rename Branch…",
+        "category": "GitButler",
+        "icon": "$(rename)"
+      },
+      {
         "command": "gitbutlerVscode.openChange",
         "title": "Open Changes",
         "category": "GitButler"
@@ -201,6 +207,10 @@
           "when": "false"
         },
         {
+          "command": "gitbutlerVscode.renameBranch",
+          "when": "false"
+        },
+        {
           "command": "gitbutlerVscode.openChange",
           "when": "false"
         },
@@ -242,6 +252,16 @@
         {
           "command": "gitbutlerVscode.reword",
           "when": "view == gitbutlerVscode.stacks && viewItem == commit",
+          "group": "1_modification"
+        },
+        {
+          "command": "gitbutlerVscode.renameBranch",
+          "when": "view == gitbutlerVscode.stacks && viewItem == branch",
+          "group": "inline"
+        },
+        {
+          "command": "gitbutlerVscode.renameBranch",
+          "when": "view == gitbutlerVscode.stacks && viewItem == branch",
           "group": "1_modification"
         }
       ],

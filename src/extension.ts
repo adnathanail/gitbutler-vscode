@@ -284,6 +284,51 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }),
 
+    // Invoked from a branch's inline button or context menu in the Stacks view. As in the GitButler
+    // app, renaming a pushed branch warns first, since the remote branch keeps its old name.
+    vscode.commands.registerCommand("gitbutlerVscode.renameBranch", async (node?: StacksNode) => {
+      if (node?.kind !== "branch") {
+        return;
+      }
+      const { repository, branch } = node;
+      if (branch.branchStatus !== "completelyUnpushed") {
+        const choice = await vscode.window.showWarningMessage(
+          `Branch "${branch.name}" has already been pushed`,
+          {
+            modal: true,
+            detail:
+              "Renaming a branch that has already been pushed will create a new branch at the remote. " +
+              "The old one will remain untouched but will be disassociated from this branch.",
+          },
+          "Rename Branch",
+        );
+        if (choice !== "Rename Branch") {
+          return;
+        }
+      }
+      const newName = (
+        await vscode.window.showInputBox({
+          title: "Rename Branch",
+          prompt: "Branch name",
+          value: branch.name,
+          validateInput: (v) => (v.trim() ? undefined : "A branch name is required"),
+        })
+      )?.trim();
+      if (!newName || newName === branch.name) {
+        return;
+      }
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.SourceControl, title: "Renaming…" },
+          () => repository.but.renameBranch(branch.name, newName),
+        );
+      } catch (err) {
+        showError(err);
+      } finally {
+        await repository.refresh();
+      }
+    }),
+
     // Invoked from the SCM title bar (with the SourceControl), shown while git's index has staged
     // changes, or the command palette.
     vscode.commands.registerCommand("gitbutlerVscode.unstageGit", async (arg?: Repository | vscode.SourceControl) => {

@@ -34,7 +34,7 @@ export interface Branch {
   /** Newest first. */
   commits: Commit[];
   upstreamCommits: Commit[];
-  /** e.g. "completelyUnpushed". */
+  /** e.g. "completelyUnpushed", meaning it has no remote tracking branch. */
   branchStatus: string;
   reviewId: unknown;
   ci: unknown;
@@ -131,6 +131,20 @@ export class But {
   async reword(commitId: string, message: string): Promise<void> {
     // In `--message=` form, a message starting with `-` isn't read as a flag.
     await this.run(["reword", "--json", commitId, `--message=${message}`]);
+  }
+
+  /**
+   * Renames an applied branch. If it was pushed, the remote branch keeps its old name, and the
+   * renamed branch no longer tracks it.
+   */
+  async renameBranch(name: string, newName: string): Promise<void> {
+    // `but reword` doesn't always resolve a branch name (a branch named "zz" is "ambiguous"), so
+    // the branch is passed by its CLI ID, looked up just beforehand since CLI IDs change.
+    const branch = (await this.status()).stacks.flatMap((s) => s.branches).find((b) => b.name === name);
+    if (!branch) {
+      throw new CommandError(`Branch '${name}' isn't applied.`);
+    }
+    await this.run(["reword", "--json", branch.cliId, `--message=${newName}`]);
   }
 
   /**
