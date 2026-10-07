@@ -93,6 +93,12 @@
         "icon": "$(comment)"
       },
       {
+        "command": "gitbutlerVscode.newBranch",
+        "title": "New Branch…",
+        "category": "GitButler",
+        "icon": "$(add)"
+      },
+      {
         "command": "gitbutlerVscode.renameBranch",
         "title": "Rename Branch…",
         "category": "GitButler",
@@ -229,9 +235,18 @@
         {
           "command": "gitbutlerVscode.stageGit",
           "when": "gitbutlerVscode.hasRepository"
+        },
+        {
+          "command": "gitbutlerVscode.newBranch",
+          "when": "gitbutlerVscode.hasRepository"
         }
       ],
       "view/title": [
+        {
+          "command": "gitbutlerVscode.newBranch",
+          "when": "view == gitbutlerVscode.stacks",
+          "group": "navigation"
+        },
         {
           "command": "gitbutlerVscode.openInGitButler",
           "when": "view == gitbutlerVscode.stacks",
