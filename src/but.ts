@@ -116,6 +116,18 @@ export class But {
   }
 
   /**
+   * Adds the uncommitted changes at the given repo-relative paths to a commit. Commits above it
+   * are rebased onto the amended commit.
+   */
+  async amend(commitId: string, paths: string[]): Promise<void> {
+    // Without paths, `but amend` amends every uncommitted change.
+    if (paths.length === 0) {
+      return;
+    }
+    await this.run(["amend", "--json", "--target", commitId, "--", ...paths]);
+  }
+
+  /**
    * Discards uncommitted changes to the given repo-relative paths, deleting new files. Recorded in
    * GitButler's oplog, so `but undo` restores them.
    */

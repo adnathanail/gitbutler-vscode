@@ -17,7 +17,7 @@ npx vscode-test --grep <pattern>          # run matching tests (compile first)
 | `src/extension.ts` | Activation, repository discovery, commands, branch picking for commits. `activate` returns an `ExtensionApi` used by tests. |
 | `src/but.ts` | Runs `but`, and types for its JSON output. Also exports `run`, the logged command runner. |
 | `src/repository.ts` | One GitButler repository: its Source Control panel, staged changes, file watcher, refresh, and diff opening. |
-| `src/stacksView.ts` | The GitButler Stacks tree view (stacks → branches → commits → files). |
+| `src/stacksView.ts` | The GitButler Stacks tree view (stacks → branches → commits → files), which accepts files dropped onto commits. |
 | `src/decorations.ts` | `ChangeDecorationProvider`, which marks uncommitted files with A/M/D/R in the Source Control panel, Explorer and tabs. |
 | `src/content.ts` | `RevisionFileSystemProvider`, a read-only file system serving file contents at a git revision for diffs and gutter markers. |
 | `src/gitIntegration.ts` | Suggestions to disable VS Code's built-in Git integration in GitButler repositories, and to re-enable it afterwards. |
@@ -35,6 +35,7 @@ Everything goes through `but … --json`:
 | Status | `but status -f --json` |
 | Commit | `but commit --json -m <msg> [--branch [<name>]] -- <paths>` |
 | Discard | `but discard --json -- <paths>` |
+| Add changes to a commit | `but amend --json --target <commit ID> -- <paths>` |
 | Open in GitButler | `but gui` |
 
 The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins. Behaviour of `but` the extension relies on:
@@ -42,6 +43,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - `but commit` accepts plain repo-relative paths as well as CLI IDs. Uncommitted-file CLI IDs change whenever the workspace changes, so the extension always passes paths and never caches CLI IDs.
 - Flags must come before `--`, or they're treated as paths. `--` is needed so paths starting with `-` aren't read as flags.
 - `but discard` also accepts plain paths, and errors on paths with no uncommitted changes. With no paths it discards every uncommitted change, so the extension never calls it without any. Discarding deletes new files, and is recorded in the oplog, so `but undo` restores everything, including deleted new files.
+- `but amend` also accepts plain paths and full commit IDs, works on commits below the top of a branch (rebasing those above), and errors on paths with no uncommitted changes. With no paths it amends every uncommitted change, so the extension never calls it without any.
 - `--branch` with no value creates a new branch with a generated name. A name that doesn't exist creates a new unstacked branch.
 - With more than one stack applied, `but commit` fails unless `--branch` is given. With one stack it commits to the tip of that stack, and with none it creates a branch.
 - The JSON returned by `but commit` includes `branch` only when the commit created a new branch.
@@ -69,6 +71,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - **A/M/D/R letters on uncommitted files come from a `FileDecorationProvider`, only while VS Code's Git decorations are off.** Source control resources can't show a description, and the Git extension decorates the same file URIs, so with it on each letter would appear twice. The provider steps aside unless `git.enabled` or `git.decorations.enabled` is `false` for the repository root, or the Git extension isn't installed or enabled. Its colours are its own (`gitbutlerVscode.*ResourceForeground`, defaulting to Git's), since Git's colour IDs disappear when the Git extension is disabled. New files are `A`, not Git's `U` (untracked), because that's what `but` reports.
 - **The Open File button on diffs mirrors the Git extension's.** In a diff, `resourceScheme` is the right-hand side's. Git shows its button on every diff whose right side is `file:` or `git:`, while its integration is on. This extension's button shows on `gitbutler-vscode-rev:` diffs (committed changes), and on `file:` diffs only while Git's button doesn't, so there's never two. It opens the working tree file, keeping the cursor position from the diff. Source Control rows have it inline and in their context menu, hidden for deleted files using the change type, which `Repository` sets as each resource's `contextValue` (`scmResourceState` in menus). Stage, Unstage and Discard tell staged rows apart by `scmResourceGroup == staged`; staged rows have no Discard button, as in Git.
 - **Discarding asks first, in a modal dialog**, as the Git extension does. Stage, Unstage and Discard are each one command, used on both changes and group headers: commands on changes get every selected change, and commands on a group header get the group.
+- **Dropping files onto a commit amends it.** The Stacks view accepts `text/uri-list`, which the Source Control panel, Explorer and editor tabs all set when dragging files. A drop onto a commit or one of its files runs the internal `gitbutlerVscode.amend` command, which shows errors like other commands. Dropped files without uncommitted changes are ignored, and if none have any, it's an error. Tree views can't refuse a drop per item, so a drop onto anything else explains where to drop instead. Dropping onto the editor area opens the file, which is VS Code's own behaviour for dragged file URIs.
 - **Error notifications don't block.** `showError` fires and forgets, so commands finish when their work does, and tests don't hang waiting for a notification to be dismissed. Errors are also emitted on `ExtensionApi.onDidShowError` for tests.
 - **Discovery** runs on activation, when workspace folders change, and when any `.git/HEAD` changes (debounced), so `but setup`/`but teardown` in an open folder are noticed. Runs are serialised, and existing `Repository` objects are kept so their views don't reset.
 - **Git integration suggestions** are shown once per change in whether a folder is managed by GitButler. Disabling writes `git.enabled: false` to workspace settings (folder settings in a multi-root workspace) and records the folder and settings level in workspace state. Re-enabling removes the setting rather than setting it to `true`. If the user changed the setting since, the record is dropped silently.
