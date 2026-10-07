@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { Branch, Commit, FileChange, Stack } from "./but";
+import { RevisionFileSystemProvider } from "./content";
 import { changeLetter, OpenChangeTarget, Repository } from "./repository";
 
 export type StacksNode =
@@ -168,7 +169,10 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
       }
       case "file": {
         const { change, commit, repository } = node;
-        const item = new vscode.TreeItem(vscode.Uri.file(path.join(repository.root, change.filePath)));
+        // At the commit, rather than the working tree file, so the item gets the file's icon without
+        // decorations for its uncommitted changes. A deleted file would otherwise look deleted in
+        // the commit that added it.
+        const item = new vscode.TreeItem(RevisionFileSystemProvider.uri(repository.root, change.filePath, commit.commitId));
         item.label = path.basename(change.filePath);
         const dir = path.dirname(change.filePath);
         item.description = `${changeLetter(change.changeType)}${dir === "." ? "" : `  ${dir}`}`;
