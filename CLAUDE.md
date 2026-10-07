@@ -36,6 +36,7 @@ Everything goes through `but … --json`:
 | Commit | `but commit --json -m <msg> [--branch [<name>]] -- <paths>` |
 | Discard | `but discard --json -- <paths>` |
 | Add changes to a commit | `but amend --json --target <commit ID> -- <paths>` |
+| Reword a commit | `but reword --json <commit ID> --message=<msg>` |
 | Open in GitButler | `but gui` |
 
 The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins. Behaviour of `but` the extension relies on:
@@ -44,6 +45,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - Flags must come before `--`, or they're treated as paths. `--` is needed so paths starting with `-` aren't read as flags.
 - `but discard` also accepts plain paths, and errors on paths with no uncommitted changes. With no paths it discards every uncommitted change, so the extension never calls it without any. Discarding deletes new files, and is recorded in the oplog, so `but undo` restores everything, including deleted new files.
 - `but amend` also accepts plain paths and full commit IDs, works on commits below the top of a branch (rebasing those above), and errors on paths with no uncommitted changes. With no paths it amends every uncommitted change, so the extension never calls it without any.
+- `but reword` accepts full commit IDs and multi-line messages, and rebases the commits above. The message is passed as `--message=<msg>` so one starting with `-` isn't read as a flag.
 - `--branch` with no value creates a new branch with a generated name. A name that doesn't exist creates a new unstacked branch.
 - With more than one stack applied, `but commit` fails unless `--branch` is given. With one stack it commits to the tip of that stack, and with none it creates a branch.
 - The JSON returned by `but commit` includes `branch` only when the commit created a new branch.
@@ -72,6 +74,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - **The Open File button on diffs mirrors the Git extension's.** In a diff, `resourceScheme` is the right-hand side's. Git shows its button on every diff whose right side is `file:` or `git:`, while its integration is on. This extension's button shows on `gitbutler-vscode-rev:` diffs (committed changes), and on `file:` diffs only while Git's button doesn't, so there's never two. It opens the working tree file, keeping the cursor position from the diff. Source Control rows have it inline and in their context menu, hidden for deleted files using the change type, which `Repository` sets as each resource's `contextValue` (`scmResourceState` in menus). Stage, Unstage and Discard tell staged rows apart by `scmResourceGroup == staged`; staged rows have no Discard button, as in Git.
 - **Discarding asks first, in a modal dialog**, as the Git extension does. Stage, Unstage and Discard are each one command, used on both changes and group headers: commands on changes get every selected change, and commands on a group header get the group.
 - **Dropping files onto a commit amends it.** The Stacks view accepts `text/uri-list`, which the Source Control panel, Explorer and editor tabs all set when dragging files. A drop onto a commit or one of its files runs the internal `gitbutlerVscode.amend` command, which shows errors like other commands, and asks first in a modal dialog, as discarding does. The dialog names the commit and how many commits above it will be rebased. Dropped files without uncommitted changes are ignored, and if none have any, it's an error. Tree views can't refuse a drop per item, so a drop onto anything else explains where to drop instead. Dropping onto the editor area opens the file, which is VS Code's own behaviour for dragged file URIs.
+- **Rewording edits only the subject of a multi-line message**, keeping the body, because VS Code's input box is single-line. Commit tree items have the `contextValue` `commit` for the Reword menu items.
 - **Error notifications don't block.** `showError` fires and forgets, so commands finish when their work does, and tests don't hang waiting for a notification to be dismissed. Errors are also emitted on `ExtensionApi.onDidShowError` for tests.
 - **Discovery** runs on activation, when workspace folders change, and when any `.git/HEAD` changes (debounced), so `but setup`/`but teardown` in an open folder are noticed. Runs are serialised, and existing `Repository` objects are kept so their views don't reset.
 - **Git integration suggestions** are shown once per change in whether a folder is managed by GitButler. Disabling writes `git.enabled: false` to workspace settings (folder settings in a multi-root workspace) and records the folder and settings level in workspace state. Re-enabling removes the setting rather than setting it to `true`. If the user changed the setting since, the record is dropped silently.
@@ -93,6 +96,7 @@ Helpers in `src/test/helpers.ts`:
 - `useTestRepo()` gives each test its own fresh GitButler repository, separate from the workspace folder.
 - `resource(group, path)` finds a change in a Source Control group, and `paths(group)` lists a group's paths.
 - `collectErrors(api)` records error notifications, so tests can assert none appeared.
+- `stubInputBox(answer)` replaces `vscode.window.showInputBox`, recording its options.
 - `stubInformationMessage(answer)` and `stubWarningMessage(answer)` replace `vscode.window.showInformationMessage` and `showWarningMessage` to answer prompts, including modal ones.
 - `fakeBut(exitCode)` in `openInGitButler.test.ts` points `gitbutlerVscode.butPath` at a script that records its arguments, so tests of `but gui` don't launch the GitButler app.
 - `waitFor(condition, message)` polls for asynchronous effects such as rediscovery.

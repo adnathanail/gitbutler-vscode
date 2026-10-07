@@ -127,6 +127,12 @@ export class But {
     await this.run(["amend", "--json", "--target", commitId, "--", ...paths]);
   }
 
+  /** Changes a commit's message. Commits above it are rebased onto the new commit. */
+  async reword(commitId: string, message: string): Promise<void> {
+    // In `--message=` form, a message starting with `-` isn't read as a flag.
+    await this.run(["reword", "--json", commitId, `--message=${message}`]);
+  }
+
   /**
    * Discards uncommitted changes to the given repo-relative paths, deleting new files. Recorded in
    * GitButler's oplog, so `but undo` restores them.

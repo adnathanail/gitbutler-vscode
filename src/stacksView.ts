@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { Branch, Commit, FileChange, Stack } from "./but";
 import { changeLetter, OpenChangeTarget, Repository } from "./repository";
 
-type Node =
+export type StacksNode =
   | { kind: "repository"; repository: Repository }
   | { kind: "message"; text: string; error?: boolean }
   | { kind: "stack"; repository: Repository; stack: Stack }
@@ -21,7 +21,7 @@ export interface AmendTarget {
  * Tree of applied stacks → branches → commits → files. Files dropped onto a commit, or one of its
  * files, are added to that commit if they have uncommitted changes.
  */
-export class StacksProvider implements vscode.TreeDataProvider<Node>, vscode.TreeDragAndDropController<Node> {
+export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vscode.TreeDragAndDropController<StacksNode> {
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
 
@@ -35,7 +35,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node>, vscode.Tre
     this.onDidChangeTreeDataEmitter.fire();
   }
 
-  getChildren(node?: Node): Node[] {
+  getChildren(node?: StacksNode): StacksNode[] {
     if (!node) {
       const repositories = this.getRepositories();
       if (repositories.length === 1) {
@@ -67,7 +67,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node>, vscode.Tre
     }
   }
 
-  async handleDrop(target: Node | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
+  async handleDrop(target: StacksNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
     const uriList = await dataTransfer.get("text/uri-list")?.asString();
     if (!uriList) {
       return;
@@ -84,7 +84,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node>, vscode.Tre
     await vscode.commands.executeCommand("gitbutlerVscode.amend", amendTarget, uris);
   }
 
-  private repositoryChildren(repository: Repository): Node[] {
+  private repositoryChildren(repository: Repository): StacksNode[] {
     if (repository.error) {
       return [{ kind: "message", text: repository.error.split("\n")[0], error: true }];
     }
@@ -102,7 +102,7 @@ export class StacksProvider implements vscode.TreeDataProvider<Node>, vscode.Tre
     );
   }
 
-  getTreeItem(node: Node): vscode.TreeItem {
+  getTreeItem(node: StacksNode): vscode.TreeItem {
     switch (node.kind) {
       case "repository": {
         const item = new vscode.TreeItem(node.repository.name, vscode.TreeItemCollapsibleState.Expanded);
@@ -151,6 +151,8 @@ export class StacksProvider implements vscode.TreeDataProvider<Node>, vscode.Tre
         item.iconPath = commit.conflicted
           ? new vscode.ThemeIcon("warning", new vscode.ThemeColor("list.warningForeground"))
           : new vscode.ThemeIcon("git-commit");
+        // Read by menus as `viewItem`.
+        item.contextValue = "commit";
         item.description = commit.commitId.slice(0, 7);
         const tooltip = new vscode.MarkdownString();
         tooltip.appendText(commit.message.trim());
