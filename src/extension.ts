@@ -397,6 +397,43 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }),
 
+    // Invoked from a pushed branch's inline button or context menu in the Stacks view, shown while
+    // the repository has a GitHub remote.
+    vscode.commands.registerCommand("gitbutlerVscode.openBranchOnGitHub", async (node?: StacksNode) => {
+      if (node?.kind !== "branch") {
+        return;
+      }
+      try {
+        const url = await node.repository.githubBranchUrl(node.branch.name);
+        if (!url) {
+          return showError(`Branch "${node.branch.name}" wasn't pushed to GitHub.`);
+        }
+        await vscode.env.openExternal(vscode.Uri.parse(url));
+      } catch (err) {
+        showError(err);
+      }
+    }),
+
+    // Invoked from the inline button or context menu of a branch with a pull request, in the
+    // Stacks view.
+    vscode.commands.registerCommand("gitbutlerVscode.openPullRequest", async (node?: StacksNode) => {
+      if (node?.kind !== "branch" || !node.branch.reviewId) {
+        return;
+      }
+      const { repository, branch } = node;
+      try {
+        const reviews = await repository.but.reviews(branch.name);
+        // `but status` reports one pull request per branch. `but branch show` lists them all.
+        const review = reviews.find((r) => `(${r.unitSymbol}${r.number})` === branch.reviewId) ?? reviews[0];
+        if (!review) {
+          return showError(`No pull request was found for branch "${branch.name}".`);
+        }
+        await vscode.env.openExternal(vscode.Uri.parse(review.url));
+      } catch (err) {
+        showError(err);
+      }
+    }),
+
     // Invoked from the SCM title bar (with the SourceControl), shown while git's index has staged
     // changes, or the command palette.
     vscode.commands.registerCommand("gitbutlerVscode.unstageGit", async (arg?: Repository | vscode.SourceControl) => {

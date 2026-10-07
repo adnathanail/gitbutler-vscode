@@ -2,6 +2,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { But, ChangeType, FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
+import { githubBranchUrl, githubRepoUrl } from "./github";
 
 /** An uncommitted change. */
 export interface UncommittedChange {
@@ -52,6 +53,8 @@ export class Repository implements vscode.Disposable {
    * committing with it sometimes leaves changes staged there (with the reverse change unstaged).
    */
   gitStagedPaths: string[] = [];
+  /** Whether any of the repository's remotes is on GitHub, as of the last refresh. */
+  hasGitHubRemote = false;
   /**
    * Paths of the staged changes, which committing is limited to. Kept by the extension, since
    * GitButler has no staging area.
@@ -161,6 +164,7 @@ export class Repository implements vscode.Disposable {
     }
     this.refreshing = (async () => {
       const gitStaged = this.readGitStaged();
+      const remotes = this.readRemotes();
       try {
         this.status = await this.but.status();
         this.error = undefined;
@@ -168,6 +172,7 @@ export class Repository implements vscode.Disposable {
         this.error = err instanceof Error ? err.message : String(err);
       }
       this.gitStagedPaths = await gitStaged;
+      this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
       this.updateHead();
       this.updateResources();
       this.updateStatusBar();
@@ -191,6 +196,46 @@ export class Repository implements vscode.Disposable {
     } catch {
       return [];
     }
+  }
+
+  /** Remote names and their URLs. */
+  private async readRemotes(): Promise<Map<string, string>> {
+    const remotes = new Map<string, string>();
+    try {
+      const output = await run("git", ["config", "--get-regexp", "^remote\\..*\\.url$"], this.root, this.log);
+      for (const line of output.split("\n")) {
+        const match = /^remote\.(.+)\.url (.*)$/.exec(line);
+        if (match) {
+          remotes.set(match[1], match[2]);
+        }
+      }
+    } catch {
+      // No remotes.
+    }
+    return remotes;
+  }
+
+  /**
+   * The GitHub page of a pushed branch, or undefined if it was pushed somewhere other than GitHub.
+   *
+   * GitButler counts a branch as pushed if it has an upstream set in git, or if its push remote
+   * has a branch of the same name.
+   */
+  async githubBranchUrl(branch: string): Promise<string | undefined> {
+    const upstream = await run(
+      "git",
+      ["for-each-ref", "--format=%(upstream:remotename)%00%(upstream:remoteref)", `refs/heads/${branch}`],
+      this.root,
+      this.log,
+    );
+    let [remote, ref] = upstream.trim().split("\0");
+    if (!remote) {
+      remote = await this.but.pushRemote();
+      ref = `refs/heads/${branch}`;
+    }
+    const remoteUrl = (await run("git", ["remote", "get-url", remote], this.root, this.log)).trim();
+    const repoUrl = githubRepoUrl(remoteUrl);
+    return repoUrl && githubBranchUrl(repoUrl, ref.replace(/^refs\/heads\//, ""));
   }
 
   /** Resets git's index to HEAD, leaving the working tree as it is. */

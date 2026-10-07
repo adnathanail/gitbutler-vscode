@@ -36,7 +36,8 @@ export interface Branch {
   upstreamCommits: Commit[];
   /** e.g. "completelyUnpushed", meaning it has no remote tracking branch. */
   branchStatus: string;
-  reviewId: unknown;
+  /** The branch's pull request from GitButler's cache, e.g. "(#10)". */
+  reviewId: string | null;
   ci: unknown;
 }
 
@@ -58,6 +59,16 @@ export interface Status {
     latestCommit: Commit;
     lastFetched: string | null;
   };
+}
+
+/** A pull request (or merge request), from `but branch show --review --json`. */
+export interface Review {
+  number: number;
+  url: string;
+  /** "#" for GitHub pull requests. */
+  unitSymbol: string;
+  title: string;
+  draft: boolean;
 }
 
 export class CommandError extends Error {}
@@ -155,6 +166,22 @@ export class But {
       args.push("--", name);
     }
     await this.run(args);
+  }
+
+  /** The remote GitButler pushes branches to, unless a branch has an upstream set in git. */
+  async pushRemote(): Promise<string> {
+    const output: { push_remote: string } = JSON.parse(await this.run(["config", "push-remote", "--json"]));
+    return output.push_remote;
+  }
+
+  /**
+   * The pull requests of an applied branch, from GitButler's cache, as `but status` reports them.
+   * The cache is filled by the GitButler app, `but pr` and `but status --refresh-prs`.
+   */
+  async reviews(branch: string): Promise<Review[]> {
+    const args = ["branch", "show", "--json", "--review", await this.branchCliId(branch)];
+    const output: { reviews: Review[] } = JSON.parse(await this.run(args));
+    return output.reviews;
   }
 
   /**

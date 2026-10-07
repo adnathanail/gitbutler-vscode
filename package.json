@@ -99,6 +99,18 @@
         "icon": "$(add)"
       },
       {
+        "command": "gitbutlerVscode.openBranchOnGitHub",
+        "title": "Open Branch on GitHub",
+        "category": "GitButler",
+        "icon": "$(github)"
+      },
+      {
+        "command": "gitbutlerVscode.openPullRequest",
+        "title": "Open Pull Request",
+        "category": "GitButler",
+        "icon": "$(git-pull-request)"
+      },
+      {
         "command": "gitbutlerVscode.renameBranch",
         "title": "Rename Branch…",
         "category": "GitButler",
@@ -217,6 +229,14 @@
           "when": "false"
         },
         {
+          "command": "gitbutlerVscode.openBranchOnGitHub",
+          "when": "false"
+        },
+        {
+          "command": "gitbutlerVscode.openPullRequest",
+          "when": "false"
+        },
+        {
           "command": "gitbutlerVscode.openChange",
           "when": "false"
         },
@@ -270,13 +290,33 @@
           "group": "1_modification"
         },
         {
-          "command": "gitbutlerVscode.renameBranch",
-          "when": "view == gitbutlerVscode.stacks && viewItem == branch",
-          "group": "inline"
+          "command": "gitbutlerVscode.openPullRequest",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^branch\\b.*\\breview\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "gitbutlerVscode.openBranchOnGitHub",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^branch\\b.*\\bgithub\\b/",
+          "group": "inline@2"
         },
         {
           "command": "gitbutlerVscode.renameBranch",
-          "when": "view == gitbutlerVscode.stacks && viewItem == branch",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^branch\\b/",
+          "group": "inline@3"
+        },
+        {
+          "command": "gitbutlerVscode.openPullRequest",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^branch\\b.*\\breview\\b/",
+          "group": "0_open@1"
+        },
+        {
+          "command": "gitbutlerVscode.openBranchOnGitHub",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^branch\\b.*\\bgithub\\b/",
+          "group": "0_open@2"
+        },
+        {
+          "command": "gitbutlerVscode.renameBranch",
+          "when": "view == gitbutlerVscode.stacks && viewItem =~ /^branch\\b/",
           "group": "1_modification"
         }
       ],
