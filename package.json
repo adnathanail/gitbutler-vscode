@@ -71,7 +71,10 @@
         "command": "gitbutlerVscode.unstageGit",
         "title": "Unstage Everything in Git's Index",
         "category": "GitButler",
-        "icon": "$(warning)"
+        "icon": {
+          "light": "resources/broom-light.svg",
+          "dark": "resources/broom-dark.svg"
+        }
       },
       {
         "command": "gitbutlerVscode.stageGit",
