@@ -153,6 +153,21 @@ function stubMessage(
   return { calls, restore: () => (window[name] = original) };
 }
 
+/**
+ * Replaces `vscode.window.showInputBox` with one that records the options it's shown with and
+ * answers with `answer`, or `undefined` to cancel.
+ */
+export function stubInputBox(answer?: string): { calls: vscode.InputBoxOptions[]; restore(): void } {
+  const window = vscode.window as { showInputBox: unknown };
+  const original = window.showInputBox;
+  const calls: vscode.InputBoxOptions[] = [];
+  window.showInputBox = async (options: vscode.InputBoxOptions = {}) => {
+    calls.push(options);
+    return answer;
+  };
+  return { calls, restore: () => (window.showInputBox = original) };
+}
+
 /** An in-memory stand-in for `ExtensionContext.workspaceState`. */
 export class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

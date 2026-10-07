@@ -73,6 +73,12 @@
         "category": "GitButler"
       },
       {
+        "command": "gitbutlerVscode.reword",
+        "title": "Reword Commit…",
+        "category": "GitButler",
+        "icon": "$(edit)"
+      },
+      {
         "command": "gitbutlerVscode.openChange",
         "title": "Open Changes",
         "category": "GitButler"
@@ -177,6 +183,10 @@
           "when": "false"
         },
         {
+          "command": "gitbutlerVscode.reword",
+          "when": "false"
+        },
+        {
           "command": "gitbutlerVscode.openChange",
           "when": "false"
         },
@@ -199,6 +209,18 @@
           "command": "gitbutlerVscode.refresh",
           "when": "view == gitbutlerVscode.stacks",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "gitbutlerVscode.reword",
+          "when": "view == gitbutlerVscode.stacks && viewItem == commit",
+          "group": "inline"
+        },
+        {
+          "command": "gitbutlerVscode.reword",
+          "when": "view == gitbutlerVscode.stacks && viewItem == commit",
+          "group": "1_modification"
         }
       ],
       "editor/title": [

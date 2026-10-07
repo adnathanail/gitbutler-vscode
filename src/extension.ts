@@ -5,7 +5,7 @@ import { RevisionFileSystemProvider } from "./content";
 import { ChangeDecorationProvider } from "./decorations";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
-import { AmendTarget, behindDescription, StacksProvider } from "./stacksView";
+import { AmendTarget, behindDescription, StacksNode, StacksProvider } from "./stacksView";
 
 const WORKSPACE_BRANCH = "gitbutler/workspace";
 
@@ -241,6 +241,36 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         await vscode.window.withProgress(
           { location: vscode.ProgressLocation.SourceControl, title: "Amending…" },
           () => repository.but.amend(commitId, paths),
+        );
+      } catch (err) {
+        showError(err);
+      } finally {
+        await repository.refresh();
+      }
+    }),
+
+    // Invoked from a commit's inline button or context menu in the Stacks view. Input boxes are
+    // single-line, so for a message with a body, only the subject is edited and the body is kept.
+    vscode.commands.registerCommand("gitbutlerVscode.reword", async (node?: StacksNode) => {
+      if (node?.kind !== "commit") {
+        return;
+      }
+      const { repository, commit } = node;
+      const [subject, ...body] = commit.message.split("\n");
+      const hasBody = body.join("").trim() !== "";
+      const newSubject = await vscode.window.showInputBox({
+        title: "Reword Commit",
+        prompt: hasBody ? "Commit subject. The rest of the message is kept." : "Commit message",
+        value: subject,
+        validateInput: (v) => (v.trim() ? undefined : "A commit message is required"),
+      });
+      if (newSubject === undefined || !newSubject.trim() || newSubject === subject) {
+        return;
+      }
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.SourceControl, title: "Rewording…" },
+          () => repository.but.reword(commit.commitId, [newSubject, ...body].join("\n")),
         );
       } catch (err) {
         showError(err);
