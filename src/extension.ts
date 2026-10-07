@@ -36,6 +36,11 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     stacks.refresh();
     decorations.refresh();
     stacksView.description = repositories.length === 1 ? behindDescription(repositories[0]) : undefined;
+    void vscode.commands.executeCommand(
+      "setContext",
+      "gitbutlerVscode.hasGitStagedChanges",
+      repositories.some((r) => r.gitStagedPaths.length > 0),
+    );
   };
 
   // Workspace folders already prompted about. Each prompt is shown once per change in whether a
@@ -272,6 +277,22 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
           { location: vscode.ProgressLocation.SourceControl, title: "Rewording…" },
           () => repository.but.reword(commit.commitId, [newSubject, ...body].join("\n")),
         );
+      } catch (err) {
+        showError(err);
+      } finally {
+        await repository.refresh();
+      }
+    }),
+
+    // Invoked from the SCM title bar (with the SourceControl), shown while git's index has staged
+    // changes, or the command palette.
+    vscode.commands.registerCommand("gitbutlerVscode.unstageGit", async (arg?: Repository | vscode.SourceControl) => {
+      const repository = await resolveRepository(arg);
+      if (!repository) {
+        return;
+      }
+      try {
+        await repository.unstageGit();
       } catch (err) {
         showError(err);
       } finally {

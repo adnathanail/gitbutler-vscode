@@ -68,6 +68,12 @@
         "icon": "$(discard)"
       },
       {
+        "command": "gitbutlerVscode.unstageGit",
+        "title": "Unstage Everything in Git's Index",
+        "category": "GitButler",
+        "icon": "$(warning)"
+      },
+      {
         "command": "gitbutlerVscode.amend",
         "title": "Add Changes to Commit",
         "category": "GitButler"
@@ -197,6 +203,10 @@
         {
           "command": "gitbutlerVscode.openInGitButler",
           "when": "gitbutlerVscode.hasRepository"
+        },
+        {
+          "command": "gitbutlerVscode.unstageGit",
+          "when": "gitbutlerVscode.hasRepository"
         }
       ],
       "view/title": [
@@ -231,6 +241,11 @@
         }
       ],
       "scm/title": [
+        {
+          "command": "gitbutlerVscode.unstageGit",
+          "when": "scmProvider == gitbutlerVscode && gitbutlerVscode.hasGitStagedChanges",
+          "group": "navigation"
+        },
         {
           "command": "gitbutlerVscode.openInGitButler",
           "when": "scmProvider == gitbutlerVscode",

@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { But, ChangeType, FileChange, Stack, Status } from "./but";
+import { But, ChangeType, FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 
 /** An uncommitted change. */
@@ -47,6 +47,11 @@ export class Repository implements vscode.Disposable {
 
   status?: Status;
   error?: string;
+  /**
+   * Paths staged in git's index, as of the last refresh. GitButler doesn't use the index, but
+   * committing with it sometimes leaves changes staged there (with the reverse change unstaged).
+   */
+  gitStagedPaths: string[] = [];
   /**
    * Paths of the staged changes, which committing is limited to. Kept by the extension, since
    * GitButler has no staging area.
@@ -155,12 +160,14 @@ export class Repository implements vscode.Disposable {
       return this.refreshing;
     }
     this.refreshing = (async () => {
+      const gitStaged = this.readGitStaged();
       try {
         this.status = await this.but.status();
         this.error = undefined;
       } catch (err) {
         this.error = err instanceof Error ? err.message : String(err);
       }
+      this.gitStagedPaths = await gitStaged;
       this.updateHead();
       this.updateResources();
       this.updateStatusBar();
@@ -175,6 +182,20 @@ export class Repository implements vscode.Disposable {
       this.refreshQueued = false;
       await this.refresh();
     }
+  }
+
+  private async readGitStaged(): Promise<string[]> {
+    try {
+      const output = await run("git", ["diff", "--cached", "--name-only", "-z"], this.root, this.log);
+      return output.split("\0").filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  /** Resets git's index to HEAD, leaving the working tree as it is. */
+  async unstageGit(): Promise<void> {
+    await run("git", ["restore", "--staged", "--", ":/"], this.root, this.log);
   }
 
   /** Makes editors showing files at HEAD reload them when the applied commits change. */
