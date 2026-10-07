@@ -68,6 +68,11 @@
         "icon": "$(discard)"
       },
       {
+        "command": "gitbutlerVscode.amend",
+        "title": "Add Changes to Commit",
+        "category": "GitButler"
+      },
+      {
         "command": "gitbutlerVscode.openChange",
         "title": "Open Changes",
         "category": "GitButler"
@@ -165,6 +170,10 @@
         },
         {
           "command": "gitbutlerVscode.discard",
+          "when": "false"
+        },
+        {
+          "command": "gitbutlerVscode.amend",
           "when": "false"
         },
         {

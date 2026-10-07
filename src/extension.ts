@@ -1,10 +1,11 @@
+import * as path from "node:path";
 import * as vscode from "vscode";
 import { FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { ChangeDecorationProvider } from "./decorations";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
-import { behindDescription, StacksProvider } from "./stacksView";
+import { AmendTarget, behindDescription, StacksProvider } from "./stacksView";
 
 const WORKSPACE_BRANCH = "gitbutler/workspace";
 
@@ -23,7 +24,10 @@ export interface ExtensionApi {
 export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const log = vscode.window.createOutputChannel("GitButler");
   const stacks = new StacksProvider(() => repositories);
-  const stacksView = vscode.window.createTreeView("gitbutlerVscode.stacks", { treeDataProvider: stacks });
+  const stacksView = vscode.window.createTreeView("gitbutlerVscode.stacks", {
+    treeDataProvider: stacks,
+    dragAndDropController: stacks,
+  });
 
   const revisions = new RevisionFileSystemProvider();
   const decorations = new ChangeDecorationProvider(() => repositories);
@@ -215,6 +219,31 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         return;
       }
       await commit(repository, paths, assignedStack(status, paths)).catch(showError);
+    }),
+
+    // Invoked by dropping files onto a commit in the Stacks view. Adds the files' uncommitted
+    // changes to the commit.
+    vscode.commands.registerCommand("gitbutlerVscode.amend", async (target: AmendTarget, uris: vscode.Uri[]) => {
+      const { repository, commitId } = target;
+      await repository.refresh();
+      const changed = new Set(repository.changes.map((c) => c.change.filePath));
+      const paths = uris
+        .filter((uri) => uri.scheme === "file")
+        .map((uri) => path.relative(repository.root, uri.fsPath).split(path.sep).join("/"))
+        .filter((p) => changed.has(p));
+      if (paths.length === 0) {
+        return showError("Only files with uncommitted changes can be added to a commit.");
+      }
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.SourceControl, title: "Amending…" },
+          () => repository.but.amend(commitId, paths),
+        );
+      } catch (err) {
+        showError(err);
+      } finally {
+        await repository.refresh();
+      }
     }),
 
     // These are invoked from the Source Control panel, with the selected changes or a group.

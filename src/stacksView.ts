@@ -11,10 +11,23 @@ type Node =
   | { kind: "commit"; repository: Repository; commit: Commit }
   | { kind: "file"; repository: Repository; commit: Commit; change: FileChange };
 
-/** Tree of applied stacks → branches → commits → files. */
-export class StacksProvider implements vscode.TreeDataProvider<Node> {
+/** Argument to the `gitbutlerVscode.amend` command. */
+export interface AmendTarget {
+  readonly repository: Repository;
+  readonly commitId: string;
+}
+
+/**
+ * Tree of applied stacks → branches → commits → files. Files dropped onto a commit, or one of its
+ * files, are added to that commit if they have uncommitted changes.
+ */
+export class StacksProvider implements vscode.TreeDataProvider<Node>, vscode.TreeDragAndDropController<Node> {
   private readonly onDidChangeTreeDataEmitter = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.onDidChangeTreeDataEmitter.event;
+
+  // Set by the Source Control panel, the Explorer and editor tabs when dragging files.
+  readonly dropMimeTypes = ["text/uri-list"];
+  readonly dragMimeTypes = [];
 
   constructor(private readonly getRepositories: () => Repository[]) {}
 
@@ -52,6 +65,23 @@ export class StacksProvider implements vscode.TreeDataProvider<Node> {
       default:
         return [];
     }
+  }
+
+  async handleDrop(target: Node | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
+    const uriList = await dataTransfer.get("text/uri-list")?.asString();
+    if (!uriList) {
+      return;
+    }
+    const uris = uriList
+      .split(/\r?\n/)
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => vscode.Uri.parse(line));
+    if (target?.kind !== "commit" && target?.kind !== "file") {
+      void vscode.window.showInformationMessage("Drop changes onto a commit to add them to it.");
+      return;
+    }
+    const amendTarget: AmendTarget = { repository: target.repository, commitId: target.commit.commitId };
+    await vscode.commands.executeCommand("gitbutlerVscode.amend", amendTarget, uris);
   }
 
   private repositoryChildren(repository: Repository): Node[] {
