@@ -198,6 +198,11 @@ export class Repository implements vscode.Disposable {
     await run("git", ["restore", "--staged", "--", ":/"], this.root, this.log);
   }
 
+  /** Stages every change in the working tree in git's index, including new and deleted files. */
+  async stageGit(): Promise<void> {
+    await run("git", ["add", "--all", "--", ":/"], this.root, this.log);
+  }
+
   /** Makes editors showing files at HEAD reload them when the applied commits change. */
   private updateHead(): void {
     if (!this.status) {

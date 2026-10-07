@@ -300,6 +300,21 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }),
 
+    // Invoked from the SCM title bar's "..." menu (with the SourceControl), or the command palette.
+    vscode.commands.registerCommand("gitbutlerVscode.stageGit", async (arg?: Repository | vscode.SourceControl) => {
+      const repository = await resolveRepository(arg);
+      if (!repository) {
+        return;
+      }
+      try {
+        await repository.stageGit();
+      } catch (err) {
+        showError(err);
+      } finally {
+        await repository.refresh();
+      }
+    }),
+
     // These are invoked from the Source Control panel, with the selected changes or a group.
     vscode.commands.registerCommand("gitbutlerVscode.stage", (...args: unknown[]) => {
       const resources = changeResources(args);

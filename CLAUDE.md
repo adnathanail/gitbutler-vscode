@@ -39,7 +39,7 @@ Everything goes through `but … --json`:
 | Reword a commit | `but reword --json <commit ID> --message=<msg>` |
 | Open in GitButler | `but gui` |
 
-Git's index is read and reset with git itself: `git diff --cached --name-only -z` on each refresh, and `git restore --staged -- :/`.
+Git's index is read, reset and filled with git itself: `git diff --cached --name-only -z` on each refresh, `git restore --staged -- :/`, and `git add --all -- :/`.
 
 The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins. Behaviour of `but` the extension relies on:
 
@@ -80,6 +80,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - **Dropping files onto a commit amends it.** The Stacks view accepts `text/uri-list`, which the Source Control panel, Explorer and editor tabs all set when dragging files. A drop onto a commit or one of its files runs the internal `gitbutlerVscode.amend` command, which shows errors like other commands, and asks first in a modal dialog, as discarding does. The dialog names the commit and how many commits above it will be rebased. Dropped files without uncommitted changes are ignored, and if none have any, it's an error. Tree views can't refuse a drop per item, so a drop onto anything else explains where to drop instead. Dropping onto the editor area opens the file, which is VS Code's own behaviour for dragged file URIs.
 - **Rewording edits only the subject of a multi-line message**, keeping the body, because VS Code's input box is single-line. Commit tree items have the `contextValue` `commit` for the Reword menu items.
 - **Unstage in git is shown only while git's index has staged changes** (the `gitbutlerVscode.hasGitStagedChanges` context key, true if any repository has some), so the button doubles as the indicator. It uses a warning icon for that reason. It doesn't confirm, since it only resets the index to `HEAD`. `.git/index` isn't watched, so changes to the index made outside the extension are noticed on the next refresh, such as when the window regains focus.
+- **Stage All Files in Git** (`git add --all -- :/`) is in the Source Control title bar's overflow menu, for tools such as Nix flakes that ignore files git doesn't track. Staging leaves git's index differing from `HEAD`, so the Unstage in git button appears afterwards, and is how to undo it.
 - **Error notifications don't block.** `showError` fires and forgets, so commands finish when their work does, and tests don't hang waiting for a notification to be dismissed. Errors are also emitted on `ExtensionApi.onDidShowError` for tests.
 - **Discovery** runs on activation, when workspace folders change, and when any `.git/HEAD` changes (debounced), so `but setup`/`but teardown` in an open folder are noticed. Runs are serialised, and existing `Repository` objects are kept so their views don't reset.
 - **Git integration suggestions** are shown once per change in whether a folder is managed by GitButler. Disabling writes `git.enabled: false` to workspace settings (folder settings in a multi-root workspace) and records the folder and settings level in workspace state. Re-enabling removes the setting rather than setting it to `true`. If the user changed the setting since, the record is dropped silently.
