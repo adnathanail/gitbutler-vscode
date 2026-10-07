@@ -137,6 +137,8 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
             : vscode.TreeItemCollapsibleState.None,
         );
         item.iconPath = new vscode.ThemeIcon("git-branch");
+        // Read by menus as `viewItem`.
+        item.contextValue = "branch";
         const parts = [humanise(branch.branchStatus)];
         if (branch.upstreamCommits.length > 0) {
           parts.push(`${branch.upstreamCommits.length} upstream`);
