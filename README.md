@@ -15,6 +15,7 @@ This is an unofficial extension. It isn't affiliated with or endorsed by GitButl
 - **GitButler Stacks view** (in the Source Control sidebar): stacks → branches → commits → files. Click a file to see what that commit changed.
 - **Reword a commit**: the speech bubble button on a commit in the Stacks view (or right-click → *Reword Commit…*) edits its message. For a message with more than one line, only the first line is edited and the rest is kept. Commits above it are rebased.
 - **New branch**: the + button in the Stacks view's title bar. Asks for a name (leave it empty for a generated one), then whether it's an *Independent* branch (a new stack) or a *Dependent* one, stacked on top of a stack you choose.
+- **Open on GitHub**: branches pushed to GitHub have a GitHub button in the Stacks view that opens the branch's page, and branches with a pull request show its number and have a button that opens it (also in the right-click menu). Pull requests come from GitButler's GitHub integration: they appear once the GitButler app (or `but pr`) knows about them.
 - **Rename a branch**: the rename button on a branch in the Stacks view (or right-click → *Rename Branch…*). As in the GitButler app, renaming a branch that has already been pushed warns first: the branch on the remote keeps its old name, and the renamed branch is pushed as a new one.
 - **Add changes to a commit**: drag changed files from the Source Control panel (or the Explorer, or editor tabs) onto a commit in the Stacks view to add their uncommitted changes to that commit. Commits above it are rebased. Asks first, and can be undone with `but undo`.
 - **Open File**: opens the file from the working tree. It's a button in a diff's title bar, and on each change in the Source Control panel (also in its right-click menu, for several selected changes).
@@ -49,6 +50,8 @@ VS Code's built-in Git integration also shows GitButler repositories, and commit
 
 If a folder the extension disabled Git for stops being a GitButler repository, for example after `but teardown`, it offers to re-enable Git by removing that setting. If you've changed the setting yourself since, it leaves it alone.
 
+With Git integration disabled, other extensions that use VS Code's Git integration may not work in that workspace. For example, GitHub Actions (`github.vscode-github-actions`) fails to activate with "Git model not found". To use them, leave Git integration enabled, and set `gitbutlerVscode.suggestDisablingGit` to `false` to stop the suggestion.
+
 ## Settings
 
 | Setting | Default | Description |
@@ -60,6 +63,7 @@ If a folder the extension disabled Git for stops being a GitButler repository, f
 
 - Commits include whole files; individual hunks can't be selected yet.
 - When only one stack is applied, commits go to the top of that stack without asking.
+- Disabling VS Code's Git integration, as the extension suggests, can stop other extensions that need it from working (see [VS Code's Git integration](#vs-codes-git-integration)).
 - Diffs of renamed files compare against whatever was at the new path before, because `but` doesn't report the old path.
 
 ## Development

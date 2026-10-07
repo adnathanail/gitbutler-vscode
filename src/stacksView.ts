@@ -137,11 +137,21 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
             : vscode.TreeItemCollapsibleState.None,
         );
         item.iconPath = new vscode.ThemeIcon("git-branch");
-        // Read by menus as `viewItem`.
-        item.contextValue = "branch";
+        // Read by menus as `viewItem`: "branch", then "github" if it can be opened on GitHub, and
+        // "review" if it has a pull request.
+        const pushed = branch.branchStatus !== "completelyUnpushed";
+        item.contextValue = [
+          "branch",
+          ...(pushed && node.repository.hasGitHubRemote ? ["github"] : []),
+          ...(branch.reviewId ? ["review"] : []),
+        ].join(" ");
         const parts = [humanise(branch.branchStatus)];
         if (branch.upstreamCommits.length > 0) {
           parts.push(`${branch.upstreamCommits.length} upstream`);
+        }
+        if (branch.reviewId) {
+          // "(#10)" → "#10".
+          parts.push(branch.reviewId.replace(/^\((.*)\)$/, "$1"));
         }
         item.description = parts.join(" · ");
         item.tooltip = `${branch.name}\n${item.description}`;
