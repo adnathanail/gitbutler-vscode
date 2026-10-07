@@ -141,12 +141,12 @@
       },
       {
         "id": "gitbutlerVscode.renamedResourceForeground",
-        "description": "Colour of renamed files, when VS Code's Git integration is disabled. Defaults to Git's colour.",
+        "description": "Colour of renamed files, when VS Code's Git integration is disabled, and under commits in the Stacks view.",
         "defaults": {
-          "light": "#007100",
-          "dark": "#73C991",
-          "highContrast": "#73C991",
-          "highContrastLight": "#007100"
+          "light": "#AF00DB",
+          "dark": "#C586C0",
+          "highContrast": "#C586C0",
+          "highContrastLight": "#AF00DB"
         }
       }
     ],
