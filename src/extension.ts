@@ -234,6 +234,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       if (paths.length === 0) {
         return showError("Only files with uncommitted changes can be added to a commit.");
       }
+      if (!(await confirmAmend(repository, commitId, paths))) {
+        return;
+      }
       try {
         await vscode.window.withProgress(
           { location: vscode.ProgressLocation.SourceControl, title: "Amending…" },
@@ -371,6 +374,23 @@ function changeResources(args: unknown[]): ChangeResource[] {
   );
   const changes = resources.filter((r): r is ChangeResource => r instanceof Object && "repository" in r && "change" in r);
   return changes.filter((c) => c.repository === changes[0].repository);
+}
+
+/** Asks whether to add the changes at `paths` to a commit. */
+async function confirmAmend(repository: Repository, commitId: string, paths: string[]): Promise<boolean> {
+  // Commits are listed top of stack first.
+  const stackCommits = repository.status?.stacks.map((s) => s.branches.flatMap((b) => b.commits)) ?? [];
+  const commits = stackCommits.find((commits) => commits.some((c) => c.commitId === commitId)) ?? [];
+  const index = commits.findIndex((c) => c.commitId === commitId);
+  const subject = commits[index]?.message.split("\n")[0] || commitId.slice(0, 7);
+  const target = paths.length === 1 ? paths[0] : `${paths.length} files`;
+  const rebased = index === 1 ? "The commit above it will be rebased. " : index > 1 ? `The ${index} commits above it will be rebased. ` : "";
+  const choice = await vscode.window.showWarningMessage(
+    `Add the changes in ${target} to "${subject}"?`,
+    { modal: true, detail: `${rebased}This can be undone with \`but undo\`.` },
+    "Add to Commit",
+  );
+  return choice === "Add to Commit";
 }
 
 /** Discards the given uncommitted changes, all from one repository, after asking for confirmation. */
