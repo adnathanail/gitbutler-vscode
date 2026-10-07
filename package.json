@@ -2,7 +2,7 @@
   "name": "gitbutler-vscode",
   "displayName": "GitButler Stacks (Unofficial)",
   "description": "Unofficial: view GitButler stacks and commit changes using the `but` CLI. Not affiliated with GitButler, Inc.",
-  "version": "0.0.0",
+  "version": "0.0.3",
   "publisher": "adnathanail",
   "license": "MIT",
   "repository": {
