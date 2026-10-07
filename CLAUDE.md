@@ -37,6 +37,7 @@ Everything goes through `but … --json`:
 | Discard | `but discard --json -- <paths>` |
 | Add changes to a commit | `but amend --json --target <commit ID> -- <paths>` |
 | Reword a commit | `but reword --json <commit ID> --message=<msg>` |
+| New branch | `but branch new --json [--above <branch CLI ID>] [-- <name>]` |
 | Rename a branch | `but reword --json <branch CLI ID> --message=<new name>` |
 | Open in GitButler | `but gui` |
 
@@ -50,6 +51,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - `but amend` also accepts plain paths and full commit IDs, works on commits below the top of a branch (rebasing those above), and errors on paths with no uncommitted changes. With no paths it amends every uncommitted change, so the extension never calls it without any.
 - `but reword` accepts full commit IDs and multi-line messages, and rebases the commits above. The message is passed as `--message=<msg>` so one starting with `-` isn't read as a flag.
 - `but reword <branch>` renames an applied branch, validating the new name ("Invalid branch name", with a suggested name) and refusing one that's already applied. It doesn't always resolve a branch name as its target: a lone branch named `zz` is "ambiguous". The extension looks up the branch's CLI ID in a fresh `but status` and passes that. Renaming a pushed branch leaves the remote branch as it is, and the renamed branch no longer tracks it.
+- `but branch new` creates an empty branch: a new stack, or with `--above <branch>`, stacked above that branch (on top of the stack when it's the top branch). Without a name it generates one. It validates names as `but reword` does. Its target is passed by CLI ID for the same reason.
 - `branchStatus` is `completelyUnpushed` exactly when a branch has no remote tracking branch. The GitButler app's rename warning is shown when there is one.
 - `--branch` with no value creates a new branch with a generated name. A name that doesn't exist creates a new unstacked branch.
 - With more than one stack applied, `but commit` fails unless `--branch` is given. With one stack it commits to the tip of that stack, and with none it creates a branch.
@@ -82,6 +84,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - **Discarding asks first, in a modal dialog**, as the Git extension does. Stage, Unstage and Discard are each one command, used on both changes and group headers: commands on changes get every selected change, and commands on a group header get the group.
 - **Dropping files onto a commit amends it.** The Stacks view accepts `text/uri-list`, which the Source Control panel, Explorer and editor tabs all set when dragging files. A drop onto a commit or one of its files runs the internal `gitbutlerVscode.amend` command, which shows errors like other commands, and asks first in a modal dialog, as discarding does. The dialog names the commit and how many commits above it will be rebased. Dropped files without uncommitted changes are ignored, and if none have any, it's an error. Tree views can't refuse a drop per item, so a drop onto anything else explains where to drop instead. Dropping onto the editor area opens the file, which is VS Code's own behaviour for dragged file URIs.
 - **Rewording edits only the subject of a multi-line message**, keeping the body, because VS Code's input box is single-line. Commit tree items have the `contextValue` `commit` for the Reword menu items.
+- **New Branch asks for a name, then Independent or Dependent, then for a dependent branch, the stack.** The terms are the GitButler app's. The stack picker is shown even when only one stack is applied, so it's clear where the branch goes. With no stacks applied, only Independent is offered. A dependent branch always goes on top of its stack.
 - **Renaming a pushed branch warns first**, in a modal dialog with the GitButler app's wording, before the input box. Branch tree items have the `contextValue` `branch` for the Rename Branch menu items. A stack of several branches is labelled with its top branch, but has no Rename button; its branches each do.
 - **Unstage in git is shown only while git's index has staged changes** (the `gitbutlerVscode.hasGitStagedChanges` context key, true if any repository has some), so the button doubles as the indicator. Its icon is a broom (`resources/broom-{light,dark}.svg`), since codicons have none. It doesn't confirm, since it only resets the index to `HEAD`. `.git/index` isn't watched, so changes to the index made outside the extension are noticed on the next refresh, such as when the window regains focus.
 - **Stage All Files in Git** (`git add --all -- :/`) is in the Source Control title bar's overflow menu, for tools such as Nix flakes that ignore files git doesn't track. Staging leaves git's index differing from `HEAD`, so the Unstage in git button appears afterwards, and is how to undo it.
@@ -107,6 +110,7 @@ Helpers in `src/test/helpers.ts`:
 - `resource(group, path)` finds a change in a Source Control group, and `paths(group)` lists a group's paths.
 - `collectErrors(api)` records error notifications, so tests can assert none appeared.
 - `stubInputBox(answer)` replaces `vscode.window.showInputBox`, recording its options.
+- `stubQuickPick(...answers)` replaces `vscode.window.showQuickPick`, picking items by label in turn and recording the labels shown.
 - `stubInformationMessage(answer)` and `stubWarningMessage(answer)` replace `vscode.window.showInformationMessage` and `showWarningMessage` to answer prompts, including modal ones.
 - `fakeBut(exitCode)` in `openInGitButler.test.ts` points `gitbutlerVscode.butPath` at a script that records its arguments, so tests of `but gui` don't launch the GitButler app.
 - `waitFor(condition, message)` polls for asynchronous effects such as rediscovery.

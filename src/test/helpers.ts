@@ -168,6 +168,24 @@ export function stubInputBox(answer?: string): { calls: vscode.InputBoxOptions[]
   return { calls, restore: () => (window.showInputBox = original) };
 }
 
+/**
+ * Replaces `vscode.window.showQuickPick` with one that records the labels of the items it's
+ * shown, and picks the item labelled with the next of `answers`. It cancels once they run out, or
+ * if no item has that label.
+ */
+export function stubQuickPick(...answers: string[]): { calls: string[][]; restore(): void } {
+  const window = vscode.window as { showQuickPick: unknown };
+  const original = window.showQuickPick;
+  const calls: string[][] = [];
+  window.showQuickPick = async (items: readonly vscode.QuickPickItem[] | Thenable<readonly vscode.QuickPickItem[]>) => {
+    const resolved = await items;
+    calls.push(resolved.map((item) => item.label));
+    const answer = answers.shift();
+    return resolved.find((item) => item.label === answer);
+  };
+  return { calls, restore: () => (window.showQuickPick = original) };
+}
+
 /** An in-memory stand-in for `ExtensionContext.workspaceState`. */
 export class MemoryMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();

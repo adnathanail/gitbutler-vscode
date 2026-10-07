@@ -284,6 +284,74 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }),
 
+    // Invoked from the Stacks view's title bar, or the command palette. Asks for a name, then whether
+    // the branch is independent (a new stack) or dependent (on top of an existing stack), and if
+    // dependent, which stack. The stack is always asked for, even when only one is applied.
+    vscode.commands.registerCommand("gitbutlerVscode.newBranch", async (arg?: Repository | vscode.SourceControl) => {
+      const repository = await resolveRepository(arg);
+      if (!repository) {
+        return;
+      }
+      const name = await vscode.window.showInputBox({
+        title: "New Branch",
+        prompt: "Branch name",
+        placeHolder: "Leave empty to generate a name",
+      });
+      if (name === undefined) {
+        return;
+      }
+      await repository.refresh();
+      const stacks = repository.status?.stacks ?? [];
+      type KindItem = vscode.QuickPickItem & { dependent: boolean };
+      const kinds: KindItem[] = [
+        {
+          label: "Independent Branch",
+          description: "a new stack",
+          iconPath: new vscode.ThemeIcon("git-branch"),
+          dependent: false,
+        },
+      ];
+      if (stacks.length > 0) {
+        kinds.push({
+          label: "Dependent Branch",
+          description: "on top of an applied stack",
+          iconPath: new vscode.ThemeIcon("layers"),
+          dependent: true,
+        });
+      }
+      const kind = await vscode.window.showQuickPick(kinds, { title: "New Branch", placeHolder: "Choose a branch type" });
+      if (!kind) {
+        return;
+      }
+      let above: string | undefined;
+      if (kind.dependent) {
+        const stack = await vscode.window.showQuickPick(
+          stacks.map((s) => ({
+            label: s.branches[0].name,
+            description: s.branches.length > 1 ? `stack of ${s.branches.length}` : undefined,
+            detail: s.branches.length > 1 ? s.branches.map((b) => b.name).join(" → ") : undefined,
+            iconPath: new vscode.ThemeIcon(s.branches.length > 1 ? "layers" : "git-branch"),
+            stack: s,
+          })),
+          { title: "New Dependent Branch", placeHolder: "Choose the stack to add the branch to the top of" },
+        );
+        if (!stack) {
+          return;
+        }
+        above = stack.stack.branches[0].name;
+      }
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.SourceControl, title: "Creating branch…" },
+          () => repository.but.newBranch(name.trim(), above),
+        );
+      } catch (err) {
+        showError(err);
+      } finally {
+        await repository.refresh();
+      }
+    }),
+
     // Invoked from a branch's inline button or context menu in the Stacks view. As in the GitButler
     // app, renaming a pushed branch warns first, since the remote branch keeps its old name.
     vscode.commands.registerCommand("gitbutlerVscode.renameBranch", async (node?: StacksNode) => {

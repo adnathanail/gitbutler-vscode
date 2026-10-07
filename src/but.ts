@@ -138,13 +138,36 @@ export class But {
    * renamed branch no longer tracks it.
    */
   async renameBranch(name: string, newName: string): Promise<void> {
-    // `but reword` doesn't always resolve a branch name (a branch named "zz" is "ambiguous"), so
-    // the branch is passed by its CLI ID, looked up just beforehand since CLI IDs change.
+    await this.run(["reword", "--json", await this.branchCliId(name), `--message=${newName}`]);
+  }
+
+  /**
+   * Creates an empty branch, stacked on top of the applied branch `above`, or as a new stack
+   * without it. An empty name gets a generated one.
+   */
+  async newBranch(name: string, above?: string): Promise<void> {
+    const args = ["branch", "new", "--json"];
+    if (above !== undefined) {
+      args.push("--above", await this.branchCliId(above));
+    }
+    if (name) {
+      // `--` stops a name starting with `-` being read as a flag.
+      args.push("--", name);
+    }
+    await this.run(args);
+  }
+
+  /**
+   * The CLI ID of an applied branch. `but` doesn't always resolve a branch name given as a target
+   * (a branch named "zz" is "ambiguous"), so branches are passed by CLI ID, looked up just
+   * beforehand since CLI IDs change.
+   */
+  private async branchCliId(name: string): Promise<string> {
     const branch = (await this.status()).stacks.flatMap((s) => s.branches).find((b) => b.name === name);
     if (!branch) {
       throw new CommandError(`Branch '${name}' isn't applied.`);
     }
-    await this.run(["reword", "--json", branch.cliId, `--message=${newName}`]);
+    return branch.cliId;
   }
 
   /**
