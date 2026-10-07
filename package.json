@@ -76,7 +76,7 @@
         "command": "gitbutlerVscode.reword",
         "title": "Reword Commit…",
         "category": "GitButler",
-        "icon": "$(edit)"
+        "icon": "$(comment)"
       },
       {
         "command": "gitbutlerVscode.openChange",
