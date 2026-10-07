@@ -48,6 +48,27 @@ describe("git's index", () => {
     assert.deepStrictEqual(paths(repository.unassignedGroup), ["a.txt"]);
   });
 
+  it("stages every change in git's index, including new and deleted files", async () => {
+    repo().commit("a.txt", "a\n", "Add a", "feature");
+    repo().commit("b.txt", "b\n", "Add b", "feature");
+    repo().write("a.txt", "changed\n");
+    repo().remove("b.txt");
+    repo().write("dir/c.txt", "c\n");
+    const repository = await repo().repository();
+
+    const { errors, dispose } = collectErrors(api);
+    try {
+      await vscode.commands.executeCommand("gitbutlerVscode.stageGit", repository);
+    } finally {
+      dispose();
+    }
+
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(repository.gitStagedPaths, ["a.txt", "b.txt", "dir/c.txt"]);
+    assert.strictEqual(repo().git("diff", "--name-only"), "");
+    assert.strictEqual(fs.readFileSync(repo().path("a.txt"), "utf8"), "changed\n");
+  });
+
   it("finds nothing staged in a clean repository", async () => {
     repo().commit("a.txt", "a\n", "Add a", "feature");
     const repository = await repo().repository();

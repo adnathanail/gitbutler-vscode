@@ -74,6 +74,11 @@
         "icon": "$(warning)"
       },
       {
+        "command": "gitbutlerVscode.stageGit",
+        "title": "Stage All Files in Git",
+        "category": "GitButler"
+      },
+      {
         "command": "gitbutlerVscode.amend",
         "title": "Add Changes to Commit",
         "category": "GitButler"
@@ -207,6 +212,10 @@
         {
           "command": "gitbutlerVscode.unstageGit",
           "when": "gitbutlerVscode.hasRepository"
+        },
+        {
+          "command": "gitbutlerVscode.stageGit",
+          "when": "gitbutlerVscode.hasRepository"
         }
       ],
       "view/title": [
@@ -260,6 +269,11 @@
           "command": "gitbutlerVscode.refresh",
           "when": "scmProvider == gitbutlerVscode",
           "group": "navigation"
+        },
+        {
+          "command": "gitbutlerVscode.stageGit",
+          "when": "scmProvider == gitbutlerVscode",
+          "group": "1_git"
         }
       ],
       "scm/resourceGroup/context": [
