@@ -39,6 +39,8 @@ Everything goes through `but … --json`:
 | Reword a commit | `but reword --json <commit ID> --message=<msg>` |
 | Open in GitButler | `but gui` |
 
+Git's index is read and reset with git itself: `git diff --cached --name-only -z` on each refresh, and `git restore --staged -- :/`.
+
 The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins. Behaviour of `but` the extension relies on:
 
 - `but commit` accepts plain repo-relative paths as well as CLI IDs. Uncommitted-file CLI IDs change whenever the workspace changes, so the extension always passes paths and never caches CLI IDs.
@@ -59,6 +61,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - `but open` (0.22.3) fails to open links itself, with "Invalid path scheme: but". `but open --print --json [<branch or commit>]` prints a `but://app/project/<base64 .git path>/workspace[?stacks=...]` link, but the GitButler app of the same version only brings itself to the front for it, without switching project or selecting anything. `but gui`, and clonager's `but://open?path=<repo path>` links, do switch project. Checked by watching `set_project_active` in GitButler's log (`~/Library/Logs/com.gitbutler.app/`, times in UTC; project IDs are the base64 of the `.git` path).
 - `vscode.env.openExternal` re-encodes a URL's query, turning `?stacks=branch:refs/heads/x` into `?stacks%3Dbranch%3Arefs%2Fheads%2Fx`, so it's unsuitable for `but:` links with queries.
 - When `but` detects it's being run by a coding agent, its human-readable output may start with a notice asking the agent to install a GitButler skill. `--json` output doesn't include it.
+- Committing with `but` sometimes leaves changes staged in git's index, with the reverse change unstaged. `but status` reads the index for new files: a file staged and then deleted is reported as `removed`, though it was never committed.
 - `but teardown` can't run unattended in a fresh repository: it needs a branch to check out (`--checkout-to`).
 
 ## Design decisions
@@ -76,6 +79,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - **Discarding asks first, in a modal dialog**, as the Git extension does. Stage, Unstage and Discard are each one command, used on both changes and group headers: commands on changes get every selected change, and commands on a group header get the group.
 - **Dropping files onto a commit amends it.** The Stacks view accepts `text/uri-list`, which the Source Control panel, Explorer and editor tabs all set when dragging files. A drop onto a commit or one of its files runs the internal `gitbutlerVscode.amend` command, which shows errors like other commands, and asks first in a modal dialog, as discarding does. The dialog names the commit and how many commits above it will be rebased. Dropped files without uncommitted changes are ignored, and if none have any, it's an error. Tree views can't refuse a drop per item, so a drop onto anything else explains where to drop instead. Dropping onto the editor area opens the file, which is VS Code's own behaviour for dragged file URIs.
 - **Rewording edits only the subject of a multi-line message**, keeping the body, because VS Code's input box is single-line. Commit tree items have the `contextValue` `commit` for the Reword menu items.
+- **Unstage in git is shown only while git's index has staged changes** (the `gitbutlerVscode.hasGitStagedChanges` context key, true if any repository has some), so the button doubles as the indicator. It uses a warning icon for that reason. It doesn't confirm, since it only resets the index to `HEAD`. `.git/index` isn't watched, so changes to the index made outside the extension are noticed on the next refresh, such as when the window regains focus.
 - **Error notifications don't block.** `showError` fires and forgets, so commands finish when their work does, and tests don't hang waiting for a notification to be dismissed. Errors are also emitted on `ExtensionApi.onDidShowError` for tests.
 - **Discovery** runs on activation, when workspace folders change, and when any `.git/HEAD` changes (debounced), so `but setup`/`but teardown` in an open folder are noticed. Runs are serialised, and existing `Repository` objects are kept so their views don't reset.
 - **Git integration suggestions** are shown once per change in whether a folder is managed by GitButler. Disabling writes `git.enabled: false` to workspace settings (folder settings in a multi-root workspace) and records the folder and settings level in workspace state. Re-enabling removes the setting rather than setting it to `true`. If the user changed the setting since, the record is dropped silently.
