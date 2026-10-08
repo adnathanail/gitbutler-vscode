@@ -67,6 +67,27 @@ export class TestRepo {
     this.but("commit", "--json", "-m", message, "--branch", branch, "--", relative);
   }
 
+  /** The bare repository `setTarget` creates as `origin`. */
+  get origin(): string {
+    return `${this.root}-origin.git`;
+  }
+
+  /**
+   * Creates a bare repository as `origin`, pushes `main` (the initial commit) to it, and makes
+   * `origin/main` the target branch. With `url`, then points `origin` at that URL instead.
+   */
+  setTarget(url?: string): void {
+    this.git("init", "-q", "--bare", this.origin);
+    this.git("remote", "add", "origin", this.origin);
+    // Not HEAD, which `but setup` points at a GitButler workspace commit.
+    this.git("push", "-q", "origin", "refs/heads/main:refs/heads/main");
+    this.git("fetch", "-q", "origin");
+    this.but("config", "target", "origin/main");
+    if (url) {
+      this.git("remote", "set-url", "origin", url);
+    }
+  }
+
   /** A loaded extension Repository for this repo. Disposed by `dispose()`. */
   async repository(): Promise<Repository> {
     const { revisions } = await activate();
