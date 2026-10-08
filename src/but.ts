@@ -169,12 +169,14 @@ export class But {
   }
 
   /**
-   * The URL of the target branch's remote, which GitButler's GitHub integration uses for pull
-   * requests.
+   * The target branch, e.g. "origin/main", and the URL of its remote, which GitButler's GitHub
+   * integration uses for pull requests.
    */
-  async targetRemoteUrl(): Promise<string> {
-    const output: { remote_url: string } = JSON.parse(await this.run(["config", "target", "--json"]));
-    return output.remote_url;
+  async target(): Promise<{ branch: string; remoteUrl: string }> {
+    const output: { branch: string; remote_url: string } = JSON.parse(
+      await this.run(["config", "target", "--json"]),
+    );
+    return { branch: output.branch, remoteUrl: output.remote_url };
   }
 
   /** The remote GitButler pushes branches to, unless a branch has an upstream set in git. */

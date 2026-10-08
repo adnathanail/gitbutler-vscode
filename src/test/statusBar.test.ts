@@ -11,17 +11,6 @@ describe("status bar", () => {
     api = await activate();
   });
 
-  /** Makes `origin/main` the target branch, then points `origin` at `url`. */
-  function setTarget(url: string): void {
-    const remote = `${repo().root}-origin.git`;
-    repo().git("init", "-q", "--bare", remote);
-    repo().git("remote", "add", "origin", remote);
-    repo().git("push", "-q", "origin", "HEAD:refs/heads/main");
-    repo().git("fetch", "-q", "origin");
-    repo().but("config", "target", "origin/main");
-    repo().git("remote", "set-url", "origin", url);
-  }
-
   it("lists applied branches, each stack's from top to bottom, then stacks left to right", async () => {
     repo().commit("a.txt", "a", "Add a", "first-bottom");
     repo().but("branch", "new", "--above", "first-bottom", "first-top", "--json");
@@ -42,7 +31,7 @@ describe("status bar", () => {
   });
 
   it("links to the repository on GitHub, left of the branches, when the target's remote is there", async () => {
-    setTarget("git@github.com:owner/repo.git");
+    repo().setTarget("git@github.com:owner/repo.git");
     const repository = await repo().repository();
 
     const [github, branches] = repository.sourceControl.statusBarCommands ?? [];
@@ -70,7 +59,7 @@ describe("status bar", () => {
   });
 
   it("doesn't link to GitHub when the target's remote is elsewhere", async () => {
-    setTarget("git@gitlab.com:owner/repo.git");
+    repo().setTarget("git@gitlab.com:owner/repo.git");
     const repository = await repo().repository();
 
     assert.deepStrictEqual(

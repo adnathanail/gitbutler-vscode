@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { But, ChangeType, FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { githubBranchUrl, githubRepoUrl } from "./github";
+import { HistoryProvider } from "./history";
 
 /** An uncommitted change. */
 export interface UncommittedChange {
@@ -41,6 +42,8 @@ export class Repository implements vscode.Disposable {
   readonly sourceControl: vscode.SourceControl;
   readonly stagedGroup: vscode.SourceControlResourceGroup;
   readonly unassignedGroup: vscode.SourceControlResourceGroup;
+  /** The Source Control Graph's history. */
+  readonly history: HistoryProvider;
   private readonly stackGroups = new Map<string, vscode.SourceControlResourceGroup>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();
@@ -96,6 +99,16 @@ export class Repository implements vscode.Disposable {
       },
     };
 
+    this.history = new HistoryProvider(root, log);
+    try {
+      this.sourceControl.historyProvider = this.history;
+    } catch {
+      // VS Code only allows the proposed API when the extension is listed in `enable-proposed-api`.
+      log.appendLine(
+        'The Source Control Graph needs "enable-proposed-api": ["adnathanail.gitbutler-vscode"] in ~/.vscode/argv.json.',
+      );
+    }
+
     // Groups are shown in the order they're created.
     this.stagedGroup = this.sourceControl.createResourceGroup("staged", "Staged Changes");
     this.stagedGroup.hideWhenEmpty = true;
@@ -116,6 +129,7 @@ export class Repository implements vscode.Disposable {
       this.stagedGroup,
       this.unassignedGroup,
       watcher,
+      this.history,
       this.onDidChangeEmitter,
       // Changes made outside VS Code (e.g. in the GitButler app) may not all produce file events.
       vscode.window.onDidChangeWindowState((state) => state.focused && this.scheduleRefresh()),
@@ -170,7 +184,7 @@ export class Repository implements vscode.Disposable {
     this.refreshing = (async () => {
       const gitStaged = this.readGitStaged();
       const remotes = this.readRemotes();
-      const targetRemoteUrl = this.but.targetRemoteUrl().catch(() => undefined);
+      const target = this.but.target().catch(() => undefined);
       try {
         this.status = await this.but.status();
         this.error = undefined;
@@ -179,8 +193,12 @@ export class Repository implements vscode.Disposable {
       }
       this.gitStagedPaths = await gitStaged;
       this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
-      const targetUrl = await targetRemoteUrl;
-      this.githubUrl = targetUrl === undefined ? undefined : githubRepoUrl(targetUrl);
+      const targetBranch = await target;
+      this.githubUrl = targetBranch && githubRepoUrl(targetBranch.remoteUrl);
+      await this.history.update(
+        this.status?.stacks.flatMap((s) => s.branches.map((b) => b.name)) ?? [],
+        targetBranch?.branch,
+      );
       this.updateHead();
       this.updateResources();
       this.updateStatusBar();

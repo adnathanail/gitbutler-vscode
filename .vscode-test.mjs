@@ -34,7 +34,9 @@ export default defineConfig({
   // With HOME replaced, macOS has no keychain to offer and blocks the window with a prompt, so use
   // Chromium's mock keychain. VS Code doesn't know that flag and would read the workspace folder
   // (appended to these arguments) as its value, so a flag VS Code does know must come last.
-  launchArgs: ["--use-mock-keychain", "--disable-extensions"],
+  // The extension uses the proposed `scmHistoryProvider` API for the Source Control Graph, which
+  // the test window, unlike the Extension Development Host, doesn't allow without this flag.
+  launchArgs: ["--use-mock-keychain", "--enable-proposed-api", "adnathanail.gitbutler-vscode", "--disable-extensions"],
   env: {
     HOME: home,
     GITBUTLER_TEST_FIXTURES: fixtures,
