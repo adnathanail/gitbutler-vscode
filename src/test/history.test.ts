@@ -34,7 +34,7 @@ describe("Source Control Graph", () => {
     assert.strictEqual(repository.sourceControl.historyProvider, repository.history);
   });
 
-  it("shows the applied stacks and the target, without the workspace commit", async () => {
+  it("shows the applied stacks and the target, joined by the workspace commit", async () => {
     repo().setTarget();
     repo().commit("a.txt", "a\n", "A1", "stack-a");
     repo().commit("a2.txt", "a\n", "A2", "stack-a");
@@ -44,9 +44,15 @@ describe("Source Control Graph", () => {
     const items = await history(provider);
 
     const subjects = items.map((item) => item.subject);
-    assert.ok(!subjects.includes("GitButler Workspace Commit"), subjects.join(", "));
-    assert.deepStrictEqual([...subjects].sort(), ["A1", "A2", "B1", "Initial commit"]);
+    assert.deepStrictEqual([...subjects].sort(), ["A1", "A2", "B1", "GitButler Workspace Commit", "Initial commit"]);
     const byId = new Map(items.map((item) => [item.subject, item]));
+    // Regression: the Graph's Go to Current History Item button showed a loading animation and did
+    // nothing, because the commit at the current ref's revision wasn't in the graph.
+    const workspace = items[0];
+    assert.strictEqual(workspace.subject, "GitButler Workspace Commit");
+    assert.strictEqual(workspace.id, provider.currentHistoryItemRef?.revision);
+    assert.deepStrictEqual(workspace.references?.map((r) => r.name), ["gitbutler/workspace"]);
+    assert.deepStrictEqual([...workspace.parentIds].sort(), [byId.get("A2")!.id, byId.get("B1")!.id].sort());
     const initial = byId.get("Initial commit")!;
     assert.deepStrictEqual(byId.get("A1")!.parentIds, [initial.id]);
     assert.deepStrictEqual(byId.get("B1")!.parentIds, [initial.id]);
@@ -84,8 +90,8 @@ describe("Source Control Graph", () => {
     const first = await history(provider, { limit: 2 });
     const rest = await history(provider, { limit: 2, skip: 2 });
 
-    assert.deepStrictEqual(first.map((item) => item.subject), ["A3", "A2"]);
-    assert.deepStrictEqual(rest.map((item) => item.subject), ["A1", "Initial commit"]);
+    assert.deepStrictEqual(first.map((item) => item.subject), ["GitButler Workspace Commit", "A3"]);
+    assert.deepStrictEqual(rest.map((item) => item.subject), ["A2", "A1"]);
   });
 
   it("finds commits by message", async () => {
@@ -108,7 +114,7 @@ describe("Source Control Graph", () => {
     fs.renameSync(repo().path("old.txt"), repo().path("renamed.txt"));
     repo().but("commit", "--json", "-m", "Change files", "--branch", "stack-a");
     const { history: provider, root } = await repo().repository();
-    const [commit] = await history(provider, { limit: 1 });
+    const [, commit] = await history(provider, { limit: 2 });
     assert.strictEqual(commit.subject, "Change files");
 
     const changes = await provider.provideHistoryItemChanges(commit.id, commit.parentIds[0]);

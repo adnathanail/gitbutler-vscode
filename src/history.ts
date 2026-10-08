@@ -17,15 +17,14 @@ const LOG_FORMAT = ["%H", "%P", "%an", "%ae", "%at", "%B"].join("%x1f");
  * as git stores them.
  *
  * Each stack is a chain of commits from the commit it's based on. GitButler's workspace commit
- * (`gitbutler/workspace`, what HEAD points at) merges the top of every stack. It's recreated
- * whenever anything changes, so it's left out: when the graph asks for history from it, history
- * from its parents is given instead.
+ * (`gitbutler/workspace`, what HEAD points at) merges the top of every stack, and is the graph's
+ * current commit.
  *
  * Uses the proposed `scmHistoryProvider` API, which VS Code only allows for extensions under
  * development or listed in `enable-proposed-api` (in `~/.vscode/argv.json`, or a command line flag).
  */
 export class HistoryProvider implements vscode.SourceControlHistoryProvider, vscode.Disposable {
-  /** `gitbutler/workspace`. Its revision is the workspace commit, which isn't shown. */
+  /** `gitbutler/workspace`, whose revision is the workspace commit. */
   currentHistoryItemRef: vscode.SourceControlHistoryItemRef | undefined;
   /** The target branch, e.g. `origin/main`. Commits on it that aren't applied show as incoming. */
   currentHistoryItemRemoteRef: vscode.SourceControlHistoryItemRef | undefined;
@@ -126,15 +125,11 @@ export class HistoryProvider implements vscode.SourceControlHistoryProvider, vsc
     options: vscode.SourceControlHistoryOptions,
     token: vscode.CancellationToken,
   ): Promise<vscode.SourceControlHistoryItem[]> {
-    const workspace = this.currentHistoryItemRef?.revision;
-    if (!workspace || !options.historyItemRefs) {
+    if (!this.currentHistoryItemRef || !options.historyItemRefs) {
       return [];
     }
-    // The graph passes each ref's revision, or its ID if it has none. History from the workspace
-    // commit is replaced with history from its parents (`^@`), which leaves it out.
-    const revisions = [...new Set(options.historyItemRefs)].map((ref) =>
-      ref === workspace || ref === WORKSPACE_REF ? `${workspace}^@` : ref,
-    );
+    // The graph passes each ref's revision, or its ID if it has none.
+    const revisions = [...new Set(options.historyItemRefs)];
     const args = ["log", "--topo-order", "-z", `--format=${LOG_FORMAT}`];
     if (typeof options.limit === "object") {
       // Everything from the given commit onwards.
@@ -234,7 +229,7 @@ export class HistoryProvider implements vscode.SourceControlHistoryProvider, vsc
       .map((record) => {
         const [id, parents, author, authorEmail, timestamp, ...body] = record.replace(/^\n/, "").split("\x1f");
         const message = body.join("\x1f").trim();
-        const references = this.refs.filter((ref) => ref.revision === id);
+        const references = this.provideHistoryItemRefs(undefined).filter((ref) => ref.revision === id);
         return {
           id,
           parentIds: parents ? parents.split(" ") : [],
