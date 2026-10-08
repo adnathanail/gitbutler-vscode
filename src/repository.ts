@@ -56,6 +56,11 @@ export class Repository implements vscode.Disposable {
   /** Whether any of the repository's remotes is on GitHub, as of the last refresh. */
   hasGitHubRemote = false;
   /**
+   * The GitHub page of the target branch's remote, which GitButler's GitHub integration uses, as
+   * of the last refresh. Undefined if it isn't on GitHub.
+   */
+  githubUrl?: string;
+  /**
    * Paths of the staged changes, which committing is limited to. Kept by the extension, since
    * GitButler has no staging area.
    */
@@ -165,6 +170,7 @@ export class Repository implements vscode.Disposable {
     this.refreshing = (async () => {
       const gitStaged = this.readGitStaged();
       const remotes = this.readRemotes();
+      const targetRemoteUrl = this.but.targetRemoteUrl().catch(() => undefined);
       try {
         this.status = await this.but.status();
         this.error = undefined;
@@ -173,6 +179,8 @@ export class Repository implements vscode.Disposable {
       }
       this.gitStagedPaths = await gitStaged;
       this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
+      const targetUrl = await targetRemoteUrl;
+      this.githubUrl = targetUrl === undefined ? undefined : githubRepoUrl(targetUrl);
       this.updateHead();
       this.updateResources();
       this.updateStatusBar();
@@ -319,7 +327,17 @@ export class Repository implements vscode.Disposable {
       title = `$(gitbutler-vscode-logo) ${stacks.map((branches) => branches.join(", ")).join(" | ")}`;
       tooltip = ["Applied GitButler branches, one stack per line, top of stack first:", ...stacks.map((branches) => branches.join(", "))].join("\n");
     }
-    this.sourceControl.statusBarCommands = [{ ...command, title, tooltip: `${tooltip}\n\nClick to open in GitButler` }];
+    const commands: vscode.Command[] = [{ ...command, title, tooltip: `${tooltip}\n\nClick to open in GitButler` }];
+    if (this.githubUrl) {
+      // Shown to the left of the branches, as the first command.
+      commands.unshift({
+        command: "gitbutlerVscode.openRepositoryOnGitHub",
+        arguments: [this.sourceControl],
+        title: `$(github) ${this.githubUrl.split("/").pop()}`,
+        tooltip: `${this.githubUrl}\n\nClick to open on GitHub`,
+      });
+    }
+    this.sourceControl.statusBarCommands = commands;
   }
 
   private resource({ change, stack }: UncommittedChange): ChangeResource {

@@ -1,8 +1,26 @@
 import * as assert from "node:assert";
-import { useTestRepo } from "./helpers";
+import * as vscode from "vscode";
+import type { ExtensionApi } from "../extension";
+import { activate, collectErrors, useTestRepo } from "./helpers";
 
 describe("status bar", () => {
   const repo = useTestRepo();
+  let api: ExtensionApi;
+
+  before(async () => {
+    api = await activate();
+  });
+
+  /** Makes `origin/main` the target branch, then points `origin` at `url`. */
+  function setTarget(url: string): void {
+    const remote = `${repo().root}-origin.git`;
+    repo().git("init", "-q", "--bare", remote);
+    repo().git("remote", "add", "origin", remote);
+    repo().git("push", "-q", "origin", "HEAD:refs/heads/main");
+    repo().git("fetch", "-q", "origin");
+    repo().but("config", "target", "origin/main");
+    repo().git("remote", "set-url", "origin", url);
+  }
 
   it("lists applied branches, each stack's from top to bottom, then stacks left to right", async () => {
     repo().commit("a.txt", "a", "Add a", "first-bottom");
@@ -21,5 +39,43 @@ describe("status bar", () => {
     const repository = await repo().repository();
 
     assert.strictEqual(repository.sourceControl.statusBarCommands?.[0]?.title, "$(gitbutler-vscode-logo) No branches");
+  });
+
+  it("links to the repository on GitHub, left of the branches, when the target's remote is there", async () => {
+    setTarget("git@github.com:owner/repo.git");
+    const repository = await repo().repository();
+
+    const [github, branches] = repository.sourceControl.statusBarCommands ?? [];
+    assert.strictEqual(github?.title, "$(github) repo");
+    assert.strictEqual(github.command, "gitbutlerVscode.openRepositoryOnGitHub");
+    assert.deepStrictEqual(github.arguments, [repository.sourceControl]);
+    assert.strictEqual(branches?.command, "gitbutlerVscode.openInGitButler");
+
+    const env = vscode.env as { openExternal: unknown };
+    const original = env.openExternal;
+    const opened: string[] = [];
+    env.openExternal = async (uri: vscode.Uri) => {
+      opened.push(uri.toString(true));
+      return true;
+    };
+    const { errors, dispose } = collectErrors(api);
+    try {
+      await vscode.commands.executeCommand("gitbutlerVscode.openRepositoryOnGitHub", repository);
+    } finally {
+      env.openExternal = original;
+      dispose();
+    }
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(opened, ["https://github.com/owner/repo"]);
+  });
+
+  it("doesn't link to GitHub when the target's remote is elsewhere", async () => {
+    setTarget("git@gitlab.com:owner/repo.git");
+    const repository = await repo().repository();
+
+    assert.deepStrictEqual(
+      repository.sourceControl.statusBarCommands?.map((c) => c.command),
+      ["gitbutlerVscode.openInGitButler"],
+    );
   });
 });

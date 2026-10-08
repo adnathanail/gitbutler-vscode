@@ -397,6 +397,22 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }),
 
+    // Invoked from the status bar (with the SourceControl), shown while the target branch's remote is
+    // on GitHub, or the command palette.
+    vscode.commands.registerCommand(
+      "gitbutlerVscode.openRepositoryOnGitHub",
+      async (arg?: Repository | vscode.SourceControl) => {
+        const repository = await resolveRepository(arg);
+        if (!repository) {
+          return;
+        }
+        if (!repository.githubUrl) {
+          return showError(`${repository.name} isn't linked to a GitHub repository.`);
+        }
+        await vscode.env.openExternal(vscode.Uri.parse(repository.githubUrl));
+      },
+    ),
+
     // Invoked from a pushed branch's inline button or context menu in the Stacks view, shown while
     // the repository has a GitHub remote.
     vscode.commands.registerCommand("gitbutlerVscode.openBranchOnGitHub", async (node?: StacksNode) => {

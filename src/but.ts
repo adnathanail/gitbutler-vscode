@@ -168,6 +168,15 @@ export class But {
     await this.run(args);
   }
 
+  /**
+   * The URL of the target branch's remote, which GitButler's GitHub integration uses for pull
+   * requests.
+   */
+  async targetRemoteUrl(): Promise<string> {
+    const output: { remote_url: string } = JSON.parse(await this.run(["config", "target", "--json"]));
+    return output.remote_url;
+  }
+
   /** The remote GitButler pushes branches to, unless a branch has an upstream set in git. */
   async pushRemote(): Promise<string> {
     const output: { push_remote: string } = JSON.parse(await this.run(["config", "push-remote", "--json"]));
