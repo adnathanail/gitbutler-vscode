@@ -99,6 +99,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "gitbutlerVscode.openRepositoryOnGitHub",
+        "title": "Open Repository on GitHub",
+        "category": "GitButler",
+        "icon": "$(github)"
+      },
+      {
         "command": "gitbutlerVscode.openBranchOnGitHub",
         "title": "Open Branch on GitHub",
         "category": "GitButler",
@@ -258,6 +264,10 @@
         },
         {
           "command": "gitbutlerVscode.newBranch",
+          "when": "gitbutlerVscode.hasRepository"
+        },
+        {
+          "command": "gitbutlerVscode.openRepositoryOnGitHub",
           "when": "gitbutlerVscode.hasRepository"
         }
       ],
