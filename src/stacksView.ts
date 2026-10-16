@@ -122,9 +122,8 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
       }
       case "stack": {
         const names = node.stack.branches.map((b) => b.name);
-        const item = new vscode.TreeItem(names[0], vscode.TreeItemCollapsibleState.Expanded);
+        const item = new vscode.TreeItem(`Stack of ${names.length}`, vscode.TreeItemCollapsibleState.Expanded);
         item.iconPath = new vscode.ThemeIcon("layers");
-        item.description = `stack of ${names.length}`;
         item.tooltip = `Stack (top to bottom):\n${names.join("\n")}`;
         return item;
       }
