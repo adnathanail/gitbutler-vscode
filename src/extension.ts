@@ -8,6 +8,8 @@ import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
 import { AmendTarget, behindDescription, StacksNode, StacksProvider } from "./stacksView";
 
 const WORKSPACE_BRANCH = "gitbutler/workspace";
+/** Checked out while the GitButler app edits a commit, until it returns to the workspace branch. */
+const EDIT_BRANCH = "gitbutler/edit";
 
 let repositories: Repository[] = [];
 
@@ -49,7 +51,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const promptedToReenableGit = new Set<string>();
 
   const doDiscover = async () => {
-    const found = await findRepositories(log);
+    const { found, editing } = await findRepositories(log);
 
     // Keep repositories that are still present, so their views don't reset.
     for (const repository of repositories.filter((r) => !found.has(r.root))) {
@@ -74,6 +76,11 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     const state = context.workspaceState;
     for (const folder of vscode.workspace.workspaceFolders ?? []) {
       const key = folder.uri.toString();
+      // Still managed by GitButler, so neither prompt applies, and leaving edit mode for the
+      // workspace branch shouldn't prompt again either.
+      if (editing.has(key)) {
+        continue;
+      }
       const root = gitButlerRoots.get(key);
       // Not awaited: notifications stay until the user responds.
       if (root !== undefined) {
@@ -501,8 +508,15 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 export function deactivate(): void {}
 
 /** Root paths of the GitButler repositories containing each workspace folder. */
-async function findRepositories(log: vscode.OutputChannel): Promise<Map<string, vscode.WorkspaceFolder[]>> {
+/**
+ * Finds GitButler repositories on the workspace branch, with the workspace folders in each, and
+ * the URIs of workspace folders whose repository is in GitButler's edit mode.
+ */
+async function findRepositories(
+  log: vscode.OutputChannel,
+): Promise<{ found: Map<string, vscode.WorkspaceFolder[]>; editing: Set<string> }> {
   const found = new Map<string, vscode.WorkspaceFolder[]>();
+  const editing = new Set<string>();
   for (const folder of vscode.workspace.workspaceFolders ?? []) {
     if (folder.uri.scheme !== "file") {
       continue;
@@ -512,12 +526,14 @@ async function findRepositories(log: vscode.OutputChannel): Promise<Map<string, 
       const branch = (await run("git", ["branch", "--show-current"], root, log)).trim();
       if (branch === WORKSPACE_BRANCH) {
         found.set(root, [...(found.get(root) ?? []), folder]);
+      } else if (branch === EDIT_BRANCH) {
+        editing.add(folder.uri.toString());
       }
     } catch {
       // Not a git repository.
     }
   }
-  return found;
+  return { found, editing };
 }
 
 async function resolveRepository(arg?: Repository | vscode.SourceControl): Promise<Repository | undefined> {
