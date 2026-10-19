@@ -62,4 +62,35 @@ describe("discovery", () => {
       await waitFor(() => api.repositories().length === 1, "repository to be found again");
     }
   });
+
+  // Regression: entering edit mode in the GitButler app showed "is no longer managed by
+  // GitButler", offering to re-enable Git.
+  it("doesn't prompt about Git while the GitButler app is editing a commit", async () => {
+    const api = await activate();
+    const folder = vscode.workspace.workspaceFolders![0];
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: folder.uri.fsPath });
+    const stub = stubInformationMessage((_message, items) => items[0]);
+
+    try {
+      // Disable Git as the extension would, so leaving the workspace branch would offer to re-enable it.
+      git("checkout", "-q", "main");
+      await waitFor(() => api.repositories().length === 0, "repository to be removed");
+      git("checkout", "-q", "gitbutler/workspace");
+      await waitFor(() => stub.calls.length === 1, "the suggestion to disable Git");
+
+      // Edit mode checks out gitbutler/edit at the commit being edited.
+      git("checkout", "-q", "-b", "gitbutler/edit", "HEAD");
+      await waitFor(() => api.repositories().length === 0, "repository to be removed");
+      git("checkout", "-q", "gitbutler/workspace");
+      await waitFor(() => api.repositories().length === 1, "repository to be found again");
+      await api.repositories()[0].refresh();
+      assert.strictEqual(stub.calls.length, 1);
+    } finally {
+      stub.restore();
+      git("checkout", "-q", "gitbutler/workspace");
+      execFileSync("git", ["branch", "-q", "-D", "gitbutler/edit"], { cwd: folder.uri.fsPath, stdio: "ignore" });
+      await vscode.workspace.getConfiguration("git").update("enabled", undefined, vscode.ConfigurationTarget.Workspace);
+      await waitFor(() => api.repositories().length === 1, "repository to be found again");
+    }
+  });
 });
