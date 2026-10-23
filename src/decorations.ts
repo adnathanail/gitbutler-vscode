@@ -26,7 +26,7 @@ export function committedChangeUri(root: string, commitId: string, change: FileC
 
 /**
  * Shows the change type of uncommitted files (A/M/D/R, coloured) in the Source Control panel,
- * Explorer and editor tabs.
+ * Explorer and editor tabs, and dims files git ignores.
  *
  * VS Code's Git extension decorates the same files, so decorations are only provided where it
  * doesn't: when Git integration or its decorations are disabled, or the Git extension isn't present.
@@ -74,6 +74,9 @@ export class ChangeDecorationProvider implements vscode.FileDecorationProvider, 
       if (change) {
         // Deleted files aren't in the Explorer, so their folders aren't marked either, as in Git.
         return { ...decoration(change.changeType), propagate: change.changeType !== "removed" };
+      }
+      if (repository.isIgnored(filePath)) {
+        return { tooltip: "Ignored", color: new vscode.ThemeColor("gitbutlerVscode.ignoredResourceForeground") };
       }
     }
     return undefined;

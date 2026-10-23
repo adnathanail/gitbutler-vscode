@@ -37,6 +37,21 @@ describe("file decorations", () => {
     assert.strictEqual(badge("unchanged.txt"), undefined);
   });
 
+  it("dims ignored files and folders when Git integration is disabled", async () => {
+    repo().write(".gitignore", "build/\n*.log\n");
+    repo().write("build/out.js", "out\n");
+    repo().write("debug.log", "log\n");
+    await repository.refresh();
+    await git().update("enabled", false, vscode.ConfigurationTarget.Workspace);
+    const decoration = (relative: string) => provider.provideFileDecoration(vscode.Uri.file(repo().path(relative)));
+
+    for (const ignored of ["build", "build/out.js", "debug.log"]) {
+      assert.strictEqual(decoration(ignored)?.tooltip, "Ignored", ignored);
+    }
+    assert.strictEqual(decoration("modified.txt")?.badge, "M");
+    assert.strictEqual(decoration("unchanged.txt"), undefined);
+  });
+
   // Regression: a file added by a commit and since deleted in the working tree was shown as
   // deleted (a red D) under that commit in the Stacks view, because the item used the working tree
   // file's URI, which has the uncommitted change's decoration.
