@@ -56,6 +56,11 @@ export class Repository implements vscode.Disposable {
    * committing with it sometimes leaves changes staged there (with the reverse change unstaged).
    */
   gitStagedPaths: string[] = [];
+  /**
+   * Untracked paths git ignores, as of the last refresh. A directory whose contents are all ignored
+   * is listed instead of its contents.
+   */
+  ignoredPaths = new Set<string>();
   /** Whether any of the repository's remotes is on GitHub, as of the last refresh. */
   hasGitHubRemote = false;
   /**
@@ -183,6 +188,7 @@ export class Repository implements vscode.Disposable {
     }
     this.refreshing = (async () => {
       const gitStaged = this.readGitStaged();
+      const ignored = this.readIgnored();
       const remotes = this.readRemotes();
       const target = this.but.target().catch(() => undefined);
       try {
@@ -192,6 +198,7 @@ export class Repository implements vscode.Disposable {
         this.error = err instanceof Error ? err.message : String(err);
       }
       this.gitStagedPaths = await gitStaged;
+      this.ignoredPaths = await ignored;
       this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
       const targetBranch = await target;
       this.githubUrl = targetBranch && githubRepoUrl(targetBranch.remoteUrl);
@@ -222,6 +229,31 @@ export class Repository implements vscode.Disposable {
     } catch {
       return [];
     }
+  }
+
+  private async readIgnored(): Promise<Set<string>> {
+    try {
+      const output = await run(
+        "git",
+        ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z"],
+        this.root,
+        this.log,
+      );
+      // Directories end with a slash.
+      return new Set(output.split("\0").filter(Boolean).map((p) => p.replace(/\/$/, "")));
+    } catch {
+      return new Set();
+    }
+  }
+
+  /** Whether git ignores the path (repo-relative, with forward slashes), or a folder containing it. */
+  isIgnored(filePath: string): boolean {
+    for (let p = filePath; p; p = p.slice(0, Math.max(p.lastIndexOf("/"), 0))) {
+      if (this.ignoredPaths.has(p)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Remote names and their URLs. */
