@@ -33,6 +33,11 @@ export interface OpenChangesTarget {
   readonly oldestCommitId: string;
   readonly newestCommitId: string;
   readonly title: string;
+  /**
+   * Expands the tree item that was clicked. Tree items with a command only expand from their
+   * twistie, so clicking one wouldn't otherwise show its children.
+   */
+  readonly expand?: () => Thenable<void>;
 }
 
 /** Repository paths that change without the workspace state changing, e.g. `but`'s own lock file. */
