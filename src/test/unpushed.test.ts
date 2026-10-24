@@ -1,5 +1,6 @@
 import * as assert from "node:assert";
 import * as vscode from "vscode";
+import { ChangeDecorationProvider } from "../decorations";
 import { StacksProvider } from "../stacksView";
 import { useTestRepo } from "./helpers";
 
@@ -54,6 +55,27 @@ describe("unpushed commits", () => {
       ["A2", "disabledForeground"],
       ["A1", "default"],
     ]);
+  });
+
+  it("greys out unpushed commits' labels", async () => {
+    repo().setTarget();
+    repo().commit("a.txt", "1\n", "A1", "feature");
+    repo().git("push", "-q", "-u", "origin", "feature");
+    repo().commit("a.txt", "2\n", "A2", "feature");
+    const repository = await repo().repository();
+    const provider = new StacksProvider(() => [repository]);
+    const decorations = new ChangeDecorationProvider(() => [repository]);
+    const [branch] = provider.getChildren();
+
+    const colours = provider.getChildren(branch).map((node) => {
+      const uri = provider.getTreeItem(node).resourceUri;
+      const colour = uri && decorations.provideFileDecoration(uri)?.color;
+      // `ThemeColor.id` isn't declared in `@types/vscode` 1.90.
+      return (colour as { id?: string } | undefined)?.id;
+    });
+    decorations.dispose();
+
+    assert.deepStrictEqual(colours, ["disabledForeground", undefined]);
   });
 
   it("marks nothing on a pushed branch", async () => {

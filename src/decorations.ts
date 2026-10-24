@@ -24,6 +24,17 @@ export function committedChangeUri(root: string, commitId: string, change: FileC
   });
 }
 
+/** Scheme of the URIs of unpushed commits in the Stacks view. */
+const UNPUSHED_COMMIT_SCHEME = "gitbutler-vscode-unpushed";
+
+/**
+ * A URI for an unpushed commit, for its item in the Stacks view. Tree item labels can only be
+ * coloured by a file decoration, so it gives the item one that greys out its label.
+ */
+export function unpushedCommitUri(root: string, commitId: string): vscode.Uri {
+  return vscode.Uri.file(root).with({ scheme: UNPUSHED_COMMIT_SCHEME, query: commitId });
+}
+
 /**
  * Shows the change type of uncommitted files (A/M/D/R, coloured) in the Source Control panel,
  * Explorer and editor tabs, and dims files git ignores.
@@ -32,7 +43,7 @@ export function committedChangeUri(root: string, commitId: string, change: FileC
  * doesn't: when Git integration or its decorations are disabled, or the Git extension isn't present.
  *
  * Also shows the change type of files under commits in the Stacks view (`committedChangeUri`),
- * which the Git extension never decorates.
+ * which the Git extension never decorates, and greys out unpushed commits (`unpushedCommitUri`).
  */
 export class ChangeDecorationProvider implements vscode.FileDecorationProvider, vscode.Disposable {
   private readonly onDidChangeEmitter = new vscode.EventEmitter<vscode.Uri[] | undefined>();
@@ -55,6 +66,9 @@ export class ChangeDecorationProvider implements vscode.FileDecorationProvider, 
   }
 
   provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
+    if (uri.scheme === UNPUSHED_COMMIT_SCHEME) {
+      return { color: new vscode.ThemeColor("disabledForeground") };
+    }
     if (uri.scheme === COMMITTED_CHANGE_SCHEME) {
       const { changeType } = JSON.parse(uri.query) as { changeType: ChangeType };
       return decoration(changeType);

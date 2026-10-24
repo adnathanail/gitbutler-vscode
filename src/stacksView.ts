@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { Branch, Commit, FileChange, Stack } from "./but";
-import { committedChangeUri } from "./decorations";
+import { committedChangeUri, unpushedCommitUri } from "./decorations";
 import { OpenChangesTarget, OpenChangeTarget, Repository } from "./repository";
 
 export type StacksNode =
@@ -190,6 +190,9 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
           : unpushed
             ? new vscode.ThemeIcon("git-commit", new vscode.ThemeColor("disabledForeground"))
             : new vscode.ThemeIcon("git-commit");
+        if (unpushed) {
+          item.resourceUri = unpushedCommitUri(node.repository.root, commit.commitId);
+        }
         // Read by menus as `viewItem`.
         item.contextValue = "commit";
         item.description = commit.commitId.slice(0, 7);
