@@ -75,7 +75,8 @@ With Git integration disabled, other extensions that use VS Code's Git integrati
 - Commits include whole files; individual hunks can't be selected yet.
 - When only one stack is applied, commits go to the top of that stack without asking.
 - Disabling VS Code's Git integration, as the extension suggests, can stop other extensions that need it from working (see [VS Code's Git integration](#vs-codes-git-integration)).
-- Diffs of renamed files compare against whatever was at the new path before, because `but` doesn't report the old path.
+- Diffs of uncommitted renamed files compare against whatever was at the new path before, because `but` doesn't report the old path.
+- In the multi-file diff editor (clicking a commit or branch), binary files such as images only show "Binary file changed". That editor only shows text diffs. Click the file itself to see an image diff.
 
 ## Development
 
