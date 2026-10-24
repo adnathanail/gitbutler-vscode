@@ -30,6 +30,9 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
   readonly dropMimeTypes = ["text/uri-list"];
   readonly dragMimeTypes = [];
 
+  /** The view showing this tree, which clicked commits and branches are expanded in. */
+  view?: vscode.TreeView<StacksNode>;
+
   constructor(private readonly getRepositories: () => Repository[]) {}
 
   refresh(): void {
@@ -68,6 +71,14 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
     }
   }
 
+  /**
+   * Required by `TreeView.reveal`, which only reveals items that are already shown, so VS Code
+   * knows their parents without asking.
+   */
+  getParent(): undefined {
+    return undefined;
+  }
+
   async handleDrop(target: StacksNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
     const uriList = await dataTransfer.get("text/uri-list")?.asString();
     if (!uriList) {
@@ -101,6 +112,10 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
         ? { kind: "branch", repository, branch: stack.branches[0], stack }
         : { kind: "stack", repository, stack },
     );
+  }
+
+  private async expand(node: StacksNode): Promise<void> {
+    await this.view?.reveal(node, { expand: true, select: false, focus: false });
   }
 
   getTreeItem(node: StacksNode): vscode.TreeItem {
@@ -160,6 +175,7 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
             oldestCommitId: branch.commits[branch.commits.length - 1].commitId,
             newestCommitId: branch.commits[0].commitId,
             title: branch.name,
+            expand: () => this.expand(node),
           });
         }
         return item;
@@ -189,6 +205,7 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
           oldestCommitId: commit.commitId,
           newestCommitId: commit.commitId,
           title: commitTitle(commit.commitId, subject),
+          expand: () => this.expand(node),
         });
         return item;
       }

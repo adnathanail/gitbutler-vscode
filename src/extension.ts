@@ -31,8 +31,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     treeDataProvider: stacks,
     dragAndDropController: stacks,
   });
+  stacks.view = stacksView;
   const target = new TargetProvider(() => repositories, log);
   const targetView = vscode.window.createTreeView("gitbutlerVscode.target", { treeDataProvider: target });
+  target.view = targetView;
 
   const revisions = new RevisionFileSystemProvider();
   const decorations = new ChangeDecorationProvider(() => repositories);
@@ -192,7 +194,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     // Invoked by clicking a commit or branch in the Stacks or Target Branch view.
     vscode.commands.registerCommand("gitbutlerVscode.openChanges", async (target: OpenChangesTarget) => {
       try {
-        await target.repository.openChanges(target.oldestCommitId, target.newestCommitId, target.title);
+        await Promise.all([
+          target.expand?.(),
+          target.repository.openChanges(target.oldestCommitId, target.newestCommitId, target.title),
+        ]);
       } catch (err) {
         showError(err);
       }

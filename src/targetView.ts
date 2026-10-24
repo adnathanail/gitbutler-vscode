@@ -47,6 +47,9 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
   /** Loaded history by repository root, reused until the target, the workspace or the limit change. */
   private readonly pages = new Map<string, Page>();
 
+  /** The view showing this tree, which clicked commits and branches are expanded in. */
+  view?: vscode.TreeView<TargetNode>;
+
   constructor(
     private readonly getRepositories: () => Repository[],
     private readonly log: vscode.OutputChannel,
@@ -60,6 +63,14 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
   loadMore(repository: Repository): void {
     this.limits.set(repository.root, this.limit(repository) + PAGE_SIZE);
     this.refresh();
+  }
+
+  /**
+   * Required by `TreeView.reveal`, which only reveals items that are already shown, so VS Code
+   * knows their parents without asking.
+   */
+  getParent(): undefined {
+    return undefined;
   }
 
   async getChildren(node?: TargetNode): Promise<TargetNode[]> {
@@ -153,6 +164,10 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
     return this.limits.get(repository.root) ?? PAGE_SIZE;
   }
 
+  private async expand(node: TargetNode): Promise<void> {
+    await this.view?.reveal(node, { expand: true, select: false, focus: false });
+  }
+
   getTreeItem(node: TargetNode): vscode.TreeItem {
     switch (node.kind) {
       case "repository": {
@@ -193,6 +208,7 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
           oldestCommitId: commit.id,
           newestCommitId: commit.id,
           title: commitTitle(commit.id, subject),
+          expand: () => this.expand(node),
         });
         return item;
       }

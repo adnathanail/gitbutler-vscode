@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as vscode from "vscode";
 import type { ExtensionApi } from "../extension";
 import type { Repository } from "../repository";
-import { StacksProvider } from "../stacksView";
+import { StacksNode, StacksProvider } from "../stacksView";
 import { TargetProvider } from "../targetView";
 import { activate, collectErrors, useTestRepo } from "./helpers";
 
@@ -75,6 +75,27 @@ describe("opening all changes", () => {
     // with both sides.
     assert.strictEqual(tab.label, "feature (2 files)");
     assert.deepStrictEqual((tab.input as MultiDiffInput).textDiffs, []);
+  });
+
+  // Tree items with a command only expand from their twistie, so the command expands them.
+  it("expands the clicked commit or branch", async () => {
+    repo().commit("a.txt", "one\n", "Add a", "feature");
+    const repository = await repo().repository();
+    const { provider, branch, commits } = stacks(repository);
+    const revealed: { node: StacksNode; expand: unknown }[] = [];
+    provider.view = {
+      reveal: async (node: StacksNode, options?: { expand?: unknown }) => {
+        revealed.push({ node, expand: options?.expand });
+      },
+    } as unknown as vscode.TreeView<StacksNode>;
+
+    await open(provider.getTreeItem(commits[0]));
+    await open(provider.getTreeItem(branch));
+
+    assert.deepStrictEqual(revealed, [
+      { node: commits[0], expand: true },
+      { node: branch, expand: true },
+    ]);
   });
 
   it("opens a commit's changes from the Target Branch view", async () => {
