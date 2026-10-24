@@ -6,6 +6,7 @@ import { ChangeDecorationProvider } from "./decorations";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
 import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
 import { AmendTarget, behindDescription, StacksNode, StacksProvider } from "./stacksView";
+import { TargetProvider } from "./targetView";
 
 const WORKSPACE_BRANCH = "gitbutler/workspace";
 /** Checked out while the GitButler app edits a commit, until it returns to the workspace branch. */
@@ -30,14 +31,18 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     treeDataProvider: stacks,
     dragAndDropController: stacks,
   });
+  const target = new TargetProvider(() => repositories, log);
+  const targetView = vscode.window.createTreeView("gitbutlerVscode.target", { treeDataProvider: target });
 
   const revisions = new RevisionFileSystemProvider();
   const decorations = new ChangeDecorationProvider(() => repositories);
 
   const onRepositoryChange = () => {
     stacks.refresh();
+    target.refresh();
     decorations.refresh();
     stacksView.description = repositories.length === 1 ? behindDescription(repositories[0]) : undefined;
+    targetView.description = repositories.length === 1 ? repositories[0].targetBranch : undefined;
     void vscode.commands.executeCommand(
       "setContext",
       "gitbutlerVscode.hasGitStagedChanges",
@@ -147,6 +152,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     log,
     errorEmitter,
     stacksView,
+    targetView,
     revisions,
     decorations,
     vscode.window.registerFileDecorationProvider(decorations),
@@ -162,6 +168,11 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand("gitbutlerVscode.refresh", async () => {
       await Promise.all(repositories.map((r) => r.refresh()));
     }),
+
+    // Invoked by clicking Load More… at the end of the Target Branch view.
+    vscode.commands.registerCommand("gitbutlerVscode.loadMoreTargetHistory", (repository: Repository) =>
+      target.loadMore(repository),
+    ),
 
     // Invoked by clicking a change in the Source Control panel or the Stacks view. The Source
     // Control panel appends a `preserveFocus` argument.

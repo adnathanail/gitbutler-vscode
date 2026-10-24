@@ -68,6 +68,8 @@ export class Repository implements vscode.Disposable {
    * of the last refresh. Undefined if it isn't on GitHub.
    */
   githubUrl?: string;
+  /** The target branch, e.g. "origin/main", as of the last refresh. Undefined if none is set. */
+  targetBranch?: string;
   /**
    * Paths of the staged changes, which committing is limited to. Kept by the extension, since
    * GitButler has no staging area.
@@ -202,9 +204,10 @@ export class Repository implements vscode.Disposable {
       this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
       const targetBranch = await target;
       this.githubUrl = targetBranch && githubRepoUrl(targetBranch.remoteUrl);
+      this.targetBranch = targetBranch?.branch;
       await this.history.update(
         this.status?.stacks.flatMap((s) => s.branches.map((b) => b.name)) ?? [],
-        targetBranch?.branch,
+        this.targetBranch,
       );
       this.updateHead();
       this.updateResources();
