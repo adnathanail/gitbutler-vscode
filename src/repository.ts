@@ -109,6 +109,8 @@ export class Repository implements vscode.Disposable {
    * of the last refresh. Undefined if it isn't on GitHub.
    */
   githubUrl?: string;
+  /** IDs of commits on applied branches that aren't on their remote branch, as of the last refresh. */
+  unpushedCommits = new Set<string>();
   /** The target branch, e.g. "origin/main", as of the last refresh. Undefined if none is set. */
   targetBranch?: string;
   /**
@@ -240,6 +242,7 @@ export class Repository implements vscode.Disposable {
       } catch (err) {
         this.error = err instanceof Error ? err.message : String(err);
       }
+      this.unpushedCommits = await this.readUnpushed(this.status?.stacks ?? []);
       this.gitStagedPaths = await gitStaged;
       this.ignoredPaths = await ignored;
       this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
@@ -298,6 +301,46 @@ export class Repository implements vscode.Disposable {
       }
     }
     return false;
+  }
+
+  /**
+   * Commits on applied branches that their remote branch doesn't have. `but` only reports whether
+   * a branch has anything to push, so for partly pushed branches this asks git. The remote branch
+   * is found as GitButler does (see `githubBranchUrl`).
+   */
+  private async readUnpushed(stacks: Stack[]): Promise<Set<string>> {
+    const unpushed = new Set<string>();
+    let pushRemote: Promise<string> | undefined;
+    const branches = stacks.flatMap((stack) => stack.branches);
+    await Promise.all(
+      branches.map(async (branch) => {
+        const ids = branch.commits.map((commit) => commit.commitId);
+        if (branch.branchStatus === "nothingToPush" || ids.length === 0) {
+          return;
+        }
+        if (branch.branchStatus === "completelyUnpushed") {
+          ids.forEach((id) => unpushed.add(id));
+          return;
+        }
+        try {
+          const upstream = await run(
+            "git",
+            ["for-each-ref", "--format=%(upstream)", `refs/heads/${branch.name}`],
+            this.root,
+            this.log,
+          );
+          pushRemote ??= this.but.pushRemote();
+          const remoteRef = upstream.trim() || `refs/remotes/${await pushRemote}/${branch.name}`;
+          const output = await run("git", ["rev-list", ids[0], `^${remoteRef}`, "--"], this.root, this.log);
+          // Also lists commits below the branch that the remote branch lacks, which aren't its own.
+          const missing = new Set(output.split("\n"));
+          ids.filter((id) => missing.has(id)).forEach((id) => unpushed.add(id));
+        } catch {
+          // No remote branch to compare with, so none are marked.
+        }
+      }),
+    );
+    return unpushed;
   }
 
   /** Remote names and their URLs. */

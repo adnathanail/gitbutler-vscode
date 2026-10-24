@@ -184,9 +184,12 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
         const { commit } = node;
         const [subject] = commit.message.split("\n");
         const item = new vscode.TreeItem(subject || "(no message)", vscode.TreeItemCollapsibleState.Collapsed);
+        const unpushed = node.repository.unpushedCommits.has(commit.commitId);
         item.iconPath = commit.conflicted
           ? new vscode.ThemeIcon("warning", new vscode.ThemeColor("list.warningForeground"))
-          : new vscode.ThemeIcon("git-commit");
+          : unpushed
+            ? new vscode.ThemeIcon("git-commit", new vscode.ThemeColor("disabledForeground"))
+            : new vscode.ThemeIcon("git-commit");
         // Read by menus as `viewItem`.
         item.contextValue = "commit";
         item.description = commit.commitId.slice(0, 7);
@@ -198,6 +201,9 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
         );
         if (commit.conflicted) {
           tooltip.appendMarkdown("\n\n**Conflicted**");
+        }
+        if (unpushed) {
+          tooltip.appendMarkdown("\n\n**Not pushed**");
         }
         item.tooltip = tooltip;
         item.command = openChangesCommand({
