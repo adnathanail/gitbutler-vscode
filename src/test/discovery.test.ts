@@ -88,7 +88,9 @@ describe("discovery", () => {
     } finally {
       stub.restore();
       git("checkout", "-q", "gitbutler/workspace");
-      execFileSync("git", ["branch", "-q", "-D", "gitbutler/edit"], { cwd: folder.uri.fsPath, stdio: "ignore" });
+      // Deletes the branch if the test got as far as creating it. An error here would hide the
+      // test's own.
+      git("update-ref", "-d", "refs/heads/gitbutler/edit");
       await vscode.workspace.getConfiguration("git").update("enabled", undefined, vscode.ConfigurationTarget.Workspace);
       await waitFor(() => api.repositories().length === 1, "repository to be found again");
     }
