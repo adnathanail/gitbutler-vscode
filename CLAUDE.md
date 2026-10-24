@@ -118,6 +118,8 @@ Tests run inside a separate copy of VS Code (downloaded to `.vscode-test/`) usin
 
 Versions are pinned, because this is a personal project used with one setup: VS Code in `.vscode-test.mjs` (`version`), and GitButler in `.github/actions/install-gitbutler/action.yml` (used by CI and releases), which downloads the app from GitButler's release URL, checks its SHA-256 and links `but` from it, as Homebrew does (Homebrew only installs the latest version). The URL format and checksums are in Homebrew's cask (`Casks/g/gitbutler.rb`). When upgrading, update both, the versions named in the README, and the version in "How the extension uses `but`". When upgrading VS Code, also replace `src/vscode.proposed.scmHistoryProvider.d.ts` with the one at the new version's tag, since proposed APIs change. The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
 
+Dependabot (`.github/dependabot.yml`) opens weekly grouped pull requests for npm dev dependencies and GitHub Actions. It doesn't see the pinned VS Code and GitButler versions. It's told to ignore minor and major updates to `@types/vscode`, which must match `engines.vscode`, and major updates to `@types/node`, which follows the Node version bundled with that VS Code.
+
 Helpers in `src/test/helpers.ts`:
 
 - `useTestRepo()` gives each test its own fresh GitButler repository, separate from the workspace folder. `setTarget(url?)` on it gives it an `origin` (a bare repository) and makes `origin/main` the target, optionally pointing `origin` at another URL afterwards.
