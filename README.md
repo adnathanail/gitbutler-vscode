@@ -1,6 +1,6 @@
 # GitButler Stacks (Unofficial)
 
-> **Personal project.** I built this for my own use, on macOS with GitButler 0.22.2 and VS Code 1.139.1, which are the versions the tests run against. Other versions and platforms may work, but haven't been tried.
+> **Personal project.** I built this for my own use, on macOS with GitButler 0.22.3 and VS Code 1.139.1, which are the versions the tests run against. Other versions and platforms may work, but haven't been tried.
 
 View GitButler stacks and commit changes from VS Code, using the [`but` CLI](https://docs.gitbutler.com/cli-overview).
 
