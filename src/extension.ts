@@ -73,9 +73,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         return repository;
       });
     repositories = [...kept, ...added];
-    await vscode.commands.executeCommand("setContext", "gitbutlerVscode.hasRepository", repositories.length > 0);
-    onRepositoryChange();
 
+    // Prompts are shown before anything is awaited, so once the repositories have changed, so
+    // have the prompts. Otherwise tests waiting for a repository could see a later prompt.
     const gitButlerRoots = new Map<string, string>();
     for (const [root, folders] of found) {
       folders.forEach((folder) => gitButlerRoots.set(folder.uri.toString(), root));
@@ -105,6 +105,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       }
     }
 
+    await vscode.commands.executeCommand("setContext", "gitbutlerVscode.hasRepository", repositories.length > 0);
+    onRepositoryChange();
     await Promise.all(added.map((r) => r.refresh()));
   };
 
