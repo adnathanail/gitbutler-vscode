@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { But, ChangeType, FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { githubBranchUrl, githubRepoUrl } from "./github";
-import { firstParent, HistoryProvider } from "./history";
+import { commitChanges, firstParent, HistoryProvider } from "./history";
 
 /** An uncommitted change. */
 export interface UncommittedChange {
@@ -47,6 +47,31 @@ function isIgnoredPath(root: string, uri: vscode.Uri): boolean {
     return false;
   }
   return !(relative === ".git/HEAD" || relative === ".git/packed-refs" || relative.startsWith(".git/refs/"));
+}
+
+/** Whether a file is binary, by git's rule: it has a NUL byte in its first 8000 bytes. */
+async function isBinary(uri: vscode.Uri): Promise<boolean> {
+  const bytes = await vscode.workspace.fs.readFile(uri);
+  return bytes.subarray(0, 8000).includes(0);
+}
+
+/**
+ * Opens a diff, or for an added or deleted binary file, the side that exists on its own. Editors
+ * such as the image preview can't show the empty side, so its diff would only show an error.
+ */
+async function openDiff(
+  left: vscode.Uri,
+  right: vscode.Uri,
+  { added, removed }: { added: boolean; removed: boolean },
+  title: string,
+  options?: vscode.TextDocumentShowOptions,
+): Promise<void> {
+  const onlySide = added ? right : removed ? left : undefined;
+  if (onlySide && (await isBinary(onlySide))) {
+    await vscode.commands.executeCommand("vscode.open", onlySide, options, title);
+    return;
+  }
+  await vscode.commands.executeCommand("vscode.diff", left, right, title, options);
 }
 
 export function changeLetter(type: ChangeType): string {
@@ -436,10 +461,10 @@ export class Repository implements vscode.Disposable {
     const left = RevisionFileSystemProvider.uri(this.root, change.filePath, change.changeType === "added" ? "" : "HEAD");
     const right =
       change.changeType === "removed" ? RevisionFileSystemProvider.uri(this.root, change.filePath, "") : fileUri;
-    await vscode.commands.executeCommand(
-      "vscode.diff",
+    await openDiff(
       left,
       right,
+      { added: change.changeType === "added", removed: change.changeType === "removed" },
       `${path.basename(change.filePath)} (Uncommitted)`,
       options,
     );
@@ -451,20 +476,22 @@ export class Repository implements vscode.Disposable {
     change: FileChange,
     options?: vscode.TextDocumentShowOptions,
   ): Promise<void> {
-    const left = RevisionFileSystemProvider.uri(
-      this.root,
-      change.filePath,
-      change.changeType === "added" ? "" : `${commitId}^`,
-    );
+    // `but` doesn't report the path a file was renamed from, so it's looked up with git.
+    const oldPath =
+      change.changeType === "renamed"
+        ? ((await commitChanges(this.root, this.log, commitId)).find((c) => c.change.filePath === change.filePath)
+            ?.oldPath ?? change.filePath)
+        : change.filePath;
+    const left = RevisionFileSystemProvider.uri(this.root, oldPath, change.changeType === "added" ? "" : `${commitId}^`);
     const right = RevisionFileSystemProvider.uri(
       this.root,
       change.filePath,
       change.changeType === "removed" ? "" : commitId,
     );
-    await vscode.commands.executeCommand(
-      "vscode.diff",
+    await openDiff(
       left,
       right,
+      { added: change.changeType === "added", removed: change.changeType === "removed" },
       `${path.basename(change.filePath)} (${commitId.slice(0, 7)})`,
       options,
     );

@@ -158,6 +158,52 @@ describe("opening changes", () => {
     assert.strictEqual((await vscode.workspace.fs.stat(uri)).size, bytes.length);
   });
 
+  // Regression: the image preview showed "An error occurred while loading the image" for a deleted
+  // image's diff, since the deleted side was an empty file.
+  it("opens a deleted binary file on its own instead of in a diff", async () => {
+    repo().commit("image.png", new Uint8Array([0x89, 0x50, 0x00, 0x47]), "Add image", "feature");
+    repo().remove("image.png");
+    repo().but("commit", "--json", "-m", "Remove image", "--branch", "feature", "--", "image.png");
+    const repository = await repo().repository();
+    const commitId = repo().status().stacks[0].branches[0].commits[0].commitId;
+
+    await repository.openCommittedChange(commitId, { cliId: "", filePath: "image.png", changeType: "removed" });
+
+    assert.strictEqual(activeDiff(), undefined, "opened a diff");
+    const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input as { uri?: vscode.Uri } | undefined;
+    assert.strictEqual(input?.uri?.scheme, RevisionFileSystemProvider.scheme);
+    assert.strictEqual(input.uri.fsPath, repo().path("image.png"));
+  });
+
+  it("still opens a deleted text file in a diff", async () => {
+    repo().commit("a.txt", "one\n", "Add a", "feature");
+    repo().remove("a.txt");
+    repo().but("commit", "--json", "-m", "Remove a", "--branch", "feature", "--", "a.txt");
+    const repository = await repo().repository();
+    const commitId = repo().status().stacks[0].branches[0].commits[0].commitId;
+
+    await repository.openCommittedChange(commitId, { cliId: "", filePath: "a.txt", changeType: "removed" });
+
+    assert.ok(activeDiff(), "no diff editor opened");
+  });
+
+  // Regression: a renamed image's diff showed "An error occurred while loading the image" on the
+  // left, which was the new path at the parent commit, where nothing existed yet.
+  it("compares a renamed file with its old path", async () => {
+    repo().commit("old.txt", "one\n", "Add old", "feature");
+    repo().git("mv", "old.txt", "new.txt");
+    repo().but("commit", "--json", "-m", "Rename", "--branch", "feature", "--", "new.txt");
+    const repository = await repo().repository();
+    const commitId = repo().status().stacks[0].branches[0].commits[0].commitId;
+
+    await repository.openCommittedChange(commitId, { cliId: "", filePath: "new.txt", changeType: "renamed" });
+
+    const diff = activeDiff();
+    assert.ok(diff, "no diff editor opened");
+    assert.strictEqual(diff.original.fsPath, repo().path("old.txt"));
+    assert.strictEqual((await vscode.workspace.openTextDocument(diff.original)).getText(), "one\n");
+  });
+
   it("serves an empty file for the missing side of a diff", async () => {
     const uri = RevisionFileSystemProvider.uri(repo().root, "missing.png", "");
     assert.strictEqual((await vscode.workspace.fs.readFile(uri)).length, 0);
