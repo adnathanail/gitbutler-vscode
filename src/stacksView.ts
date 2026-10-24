@@ -178,24 +178,27 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
         item.tooltip = tooltip;
         return item;
       }
-      case "file": {
-        const { change, commit, repository } = node;
-        // Not the working tree file's URI, which would have the decoration for its uncommitted
-        // changes: a file deleted since would look deleted in the commit that added it.
-        const item = new vscode.TreeItem(committedChangeUri(repository.root, commit.commitId, change));
-        item.label = path.basename(change.filePath);
-        const dir = path.dirname(change.filePath);
-        item.description = dir === "." ? undefined : dir;
-        item.tooltip = `${change.filePath} (${change.changeType})`;
-        item.command = {
-          command: "gitbutlerVscode.openChange",
-          title: "Open Changes",
-          arguments: [{ repository, change, commitId: commit.commitId } satisfies OpenChangeTarget],
-        };
-        return item;
-      }
+      case "file":
+        return committedFileItem(node.repository, node.commit.commitId, node.change);
     }
   }
+}
+
+/** A file changed by a commit, which opens the commit's diff of it when clicked. */
+export function committedFileItem(repository: Repository, commitId: string, change: FileChange): vscode.TreeItem {
+  // Not the working tree file's URI, which would have the decoration for its uncommitted changes:
+  // a file deleted since would look deleted in the commit that added it.
+  const item = new vscode.TreeItem(committedChangeUri(repository.root, commitId, change));
+  item.label = path.basename(change.filePath);
+  const dir = path.dirname(change.filePath);
+  item.description = dir === "." ? undefined : dir;
+  item.tooltip = `${change.filePath} (${change.changeType})`;
+  item.command = {
+    command: "gitbutlerVscode.openChange",
+    title: "Open Changes",
+    arguments: [{ repository, change, commitId } satisfies OpenChangeTarget],
+  };
+  return item;
 }
 
 export function behindDescription(repository: Repository): string | undefined {

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { run } from "./but";
+import { FileChange, run } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { committedChangeUri } from "./decorations";
 
@@ -11,6 +11,40 @@ const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
 /** `git log` fields, separated by unit separators. With `-z`, commits are separated by NULs. */
 const LOG_FORMAT = ["%H", "%P", "%an", "%ae", "%at", "%B"].join("%x1f");
+
+/**
+ * The files a commit changed, compared with `parent` (by default its first parent, or the empty tree
+ * for a root commit). Renamed files also have the path they were renamed from.
+ */
+export async function commitChanges(
+  root: string,
+  log: vscode.OutputChannel,
+  commitId: string,
+  parent?: string,
+): Promise<{ change: FileChange; oldPath: string }[]> {
+  if (parent === undefined) {
+    const parents = await run("git", ["rev-list", "--parents", "-n", "1", commitId], root, log);
+    parent = parents.trim().split(" ")[1] ?? EMPTY_TREE;
+  }
+  const output = await run("git", ["diff", "--name-status", "-z", "-M", parent, commitId], root, log);
+  const fields = output.split("\0");
+  const changes: { change: FileChange; oldPath: string }[] = [];
+  for (let i = 0; i < fields.length - 1; ) {
+    const status = fields[i++];
+    const oldPath = fields[i++];
+    // Renames and copies list the old path, then the new one.
+    const filePath = status.startsWith("R") || status.startsWith("C") ? fields[i++] : oldPath;
+    const changeType = status.startsWith("A")
+      ? "added"
+      : status.startsWith("D")
+        ? "removed"
+        : status.startsWith("R")
+          ? "renamed"
+          : "modified";
+    changes.push({ change: { cliId: "", filePath, changeType }, oldPath });
+  }
+  return changes;
+}
 
 /**
  * The Source Control Graph for a GitButler repository: the applied stacks and the target branch,
@@ -161,29 +195,15 @@ export class HistoryProvider implements vscode.SourceControlHistoryProvider, vsc
     historyItemParentId: string | undefined,
   ): Promise<vscode.SourceControlHistoryItemChange[]> {
     const parent = historyItemParentId ?? EMPTY_TREE;
-    const output = await this.git(["diff", "--name-status", "-z", "-M", parent, historyItemId]);
-    const fields = output.split("\0");
-    const changes: vscode.SourceControlHistoryItemChange[] = [];
-    for (let i = 0; i < fields.length - 1; ) {
-      const status = fields[i++];
-      const oldPath = fields[i++];
-      // Renames and copies list the old path, then the new one.
-      const newPath = status.startsWith("R") || status.startsWith("C") ? fields[i++] : oldPath;
-      const changeType = status.startsWith("A")
-        ? "added"
-        : status.startsWith("D")
-          ? "removed"
-          : status.startsWith("R")
-            ? "renamed"
-            : "modified";
-      changes.push({
-        uri: committedChangeUri(this.root, historyItemId, { cliId: "", filePath: newPath, changeType }),
-        originalUri: changeType === "added" ? undefined : RevisionFileSystemProvider.uri(this.root, oldPath, parent),
-        modifiedUri:
-          changeType === "removed" ? undefined : RevisionFileSystemProvider.uri(this.root, newPath, historyItemId),
-      });
-    }
-    return changes;
+    const changes = await commitChanges(this.root, this.log, historyItemId, parent);
+    return changes.map(({ change, oldPath }) => ({
+      uri: committedChangeUri(this.root, historyItemId, change),
+      originalUri: change.changeType === "added" ? undefined : RevisionFileSystemProvider.uri(this.root, oldPath, parent),
+      modifiedUri:
+        change.changeType === "removed"
+          ? undefined
+          : RevisionFileSystemProvider.uri(this.root, change.filePath, historyItemId),
+    }));
   }
 
   async resolveHistoryItem(historyItemId: string): Promise<vscode.SourceControlHistoryItem | undefined> {

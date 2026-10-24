@@ -90,6 +90,11 @@
         "category": "GitButler"
       },
       {
+        "command": "gitbutlerVscode.loadMoreTargetHistory",
+        "title": "Load More Target Branch History",
+        "category": "GitButler"
+      },
+      {
         "command": "gitbutlerVscode.reword",
         "title": "Reword Commit…",
         "category": "GitButler",
@@ -214,6 +219,12 @@
           "name": "GitButler Stacks",
           "icon": "resources/gitbutler-light.svg",
           "when": "gitbutlerVscode.hasRepository"
+        },
+        {
+          "id": "gitbutlerVscode.target",
+          "name": "GitButler Target Branch",
+          "icon": "resources/gitbutler-light.svg",
+          "when": "gitbutlerVscode.hasRepository"
         }
       ]
     },
@@ -237,6 +248,10 @@
         },
         {
           "command": "gitbutlerVscode.amend",
+          "when": "false"
+        },
+        {
+          "command": "gitbutlerVscode.loadMoreTargetHistory",
           "when": "false"
         },
         {
@@ -298,6 +313,11 @@
         {
           "command": "gitbutlerVscode.refresh",
           "when": "view == gitbutlerVscode.stacks",
+          "group": "navigation"
+        },
+        {
+          "command": "gitbutlerVscode.refresh",
+          "when": "view == gitbutlerVscode.target",
           "group": "navigation"
         }
       ],
