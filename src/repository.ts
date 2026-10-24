@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { But, ChangeType, FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { githubBranchUrl, githubRepoUrl } from "./github";
-import { HistoryProvider } from "./history";
+import { firstParent, HistoryProvider } from "./history";
 
 /** An uncommitted change. */
 export interface UncommittedChange {
@@ -22,6 +22,17 @@ export interface OpenChangeTarget {
   readonly repository: Repository;
   readonly change: FileChange;
   readonly commitId?: string;
+}
+
+/**
+ * Argument to the `gitbutlerVscode.openChanges` command: a run of commits, whose changes are shown
+ * together. For one commit, `oldestCommitId` and `newestCommitId` are the same.
+ */
+export interface OpenChangesTarget {
+  readonly repository: Repository;
+  readonly oldestCommitId: string;
+  readonly newestCommitId: string;
+  readonly title: string;
 }
 
 /** Repository paths that change without the workspace state changing, e.g. `but`'s own lock file. */
@@ -451,6 +462,20 @@ export class Repository implements vscode.Disposable {
       right,
       `${path.basename(change.filePath)} (${commitId.slice(0, 7)})`,
       options,
+    );
+  }
+
+  /**
+   * Opens every file changed by a run of commits in a multi-file diff editor, comparing the newest
+   * commit with the oldest one's first parent.
+   */
+  async openChanges(oldestCommitId: string, newestCommitId: string, title: string): Promise<void> {
+    const parent = await firstParent(this.root, this.log, oldestCommitId);
+    const changes = await this.history.provideHistoryItemChanges(newestCommitId, parent);
+    await vscode.commands.executeCommand(
+      "vscode.changes",
+      title,
+      changes.map((change) => [change.uri, change.originalUri, change.modifiedUri]),
     );
   }
 

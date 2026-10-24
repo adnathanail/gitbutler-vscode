@@ -12,6 +12,12 @@ const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 /** `git log` fields, separated by unit separators. With `-z`, commits are separated by NULs. */
 const LOG_FORMAT = ["%H", "%P", "%an", "%ae", "%at", "%B"].join("%x1f");
 
+/** A commit's first parent, or the empty tree for a root commit. */
+export async function firstParent(root: string, log: vscode.OutputChannel, commitId: string): Promise<string> {
+  const parents = await run("git", ["rev-list", "--parents", "-n", "1", commitId], root, log);
+  return parents.trim().split(" ")[1] ?? EMPTY_TREE;
+}
+
 /**
  * The files a commit changed, compared with `parent` (by default its first parent, or the empty tree
  * for a root commit). Renamed files also have the path they were renamed from.
@@ -22,10 +28,7 @@ export async function commitChanges(
   commitId: string,
   parent?: string,
 ): Promise<{ change: FileChange; oldPath: string }[]> {
-  if (parent === undefined) {
-    const parents = await run("git", ["rev-list", "--parents", "-n", "1", commitId], root, log);
-    parent = parents.trim().split(" ")[1] ?? EMPTY_TREE;
-  }
+  parent ??= await firstParent(root, log, commitId);
   const output = await run("git", ["diff", "--name-status", "-z", "-M", parent, commitId], root, log);
   const fields = output.split("\0");
   const changes: { change: FileChange; oldPath: string }[] = [];

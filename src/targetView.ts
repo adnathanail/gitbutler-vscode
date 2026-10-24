@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { FileChange, run } from "./but";
 import { commitChanges } from "./history";
 import { Repository } from "./repository";
-import { committedFileItem } from "./stacksView";
+import { commitTitle, committedFileItem, openChangesCommand } from "./stacksView";
 
 /** Commits shown at first, and added by each Load More. */
 export const PAGE_SIZE = 50;
@@ -188,6 +188,12 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
           tooltip.appendMarkdown("\n\n**Upstream**: not yet in the workspace");
         }
         item.tooltip = tooltip;
+        item.command = openChangesCommand({
+          repository: node.repository,
+          oldestCommitId: commit.id,
+          newestCommitId: commit.id,
+          title: commitTitle(commit.id, subject),
+        });
         return item;
       }
       case "file":
