@@ -136,6 +136,11 @@
         "category": "GitButler"
       },
       {
+        "command": "gitbutlerVscode.openChanges",
+        "title": "Open All Changes",
+        "category": "GitButler"
+      },
+      {
         "command": "gitbutlerVscode.openFile",
         "title": "Open File",
         "category": "GitButler",
@@ -272,6 +277,10 @@
         },
         {
           "command": "gitbutlerVscode.openChange",
+          "when": "false"
+        },
+        {
+          "command": "gitbutlerVscode.openChanges",
           "when": "false"
         },
         {

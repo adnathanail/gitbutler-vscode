@@ -2,7 +2,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { Branch, Commit, FileChange, Stack } from "./but";
 import { committedChangeUri } from "./decorations";
-import { OpenChangeTarget, Repository } from "./repository";
+import { OpenChangesTarget, OpenChangeTarget, Repository } from "./repository";
 
 export type StacksNode =
   | { kind: "repository"; repository: Repository }
@@ -154,6 +154,14 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
         }
         item.description = parts.join(" · ");
         item.tooltip = `${branch.name}\n${item.description}`;
+        if (branch.commits.length > 0) {
+          item.command = openChangesCommand({
+            repository: node.repository,
+            oldestCommitId: branch.commits[branch.commits.length - 1].commitId,
+            newestCommitId: branch.commits[0].commitId,
+            title: branch.name,
+          });
+        }
         return item;
       }
       case "commit": {
@@ -176,6 +184,12 @@ export class StacksProvider implements vscode.TreeDataProvider<StacksNode>, vsco
           tooltip.appendMarkdown("\n\n**Conflicted**");
         }
         item.tooltip = tooltip;
+        item.command = openChangesCommand({
+          repository: node.repository,
+          oldestCommitId: commit.commitId,
+          newestCommitId: commit.commitId,
+          title: commitTitle(commit.commitId, subject),
+        });
         return item;
       }
       case "file":
@@ -199,6 +213,16 @@ export function committedFileItem(repository: Repository, commitId: string, chan
     arguments: [{ repository, change, commitId } satisfies OpenChangeTarget],
   };
   return item;
+}
+
+/** Opens every file a run of commits changed, in a multi-file diff editor. */
+export function openChangesCommand(target: OpenChangesTarget): vscode.Command {
+  return { command: "gitbutlerVscode.openChanges", title: "Open All Changes", arguments: [target] };
+}
+
+/** The multi-file diff editor's title for a commit, e.g. "abc1234 - Fix the thing". */
+export function commitTitle(commitId: string, subject: string): string {
+  return `${commitId.slice(0, 7)} - ${subject || "(no message)"}`;
 }
 
 export function behindDescription(repository: Repository): string | undefined {

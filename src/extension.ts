@@ -4,7 +4,7 @@ import { FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { ChangeDecorationProvider } from "./decorations";
 import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } from "./gitIntegration";
-import { ChangeResource, OpenChangeTarget, Repository } from "./repository";
+import { ChangeResource, OpenChangesTarget, OpenChangeTarget, Repository } from "./repository";
 import { AmendTarget, behindDescription, StacksNode, StacksProvider } from "./stacksView";
 import { TargetProvider } from "./targetView";
 
@@ -184,6 +184,15 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         } else {
           await target.repository.openUncommittedChange(target.change, options);
         }
+      } catch (err) {
+        showError(err);
+      }
+    }),
+
+    // Invoked by clicking a commit or branch in the Stacks or Target Branch view.
+    vscode.commands.registerCommand("gitbutlerVscode.openChanges", async (target: OpenChangesTarget) => {
+      try {
+        await target.repository.openChanges(target.oldestCommitId, target.newestCommitId, target.title);
       } catch (err) {
         showError(err);
       }
