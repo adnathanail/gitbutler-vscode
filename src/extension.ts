@@ -88,8 +88,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     const state = context.workspaceState;
     for (const folder of vscode.workspace.workspaceFolders ?? []) {
       const key = folder.uri.toString();
-      // Still managed by GitButler, so neither prompt applies, and leaving edit mode for the
-      // workspace branch shouldn't prompt again either.
+      // Still managed by GitButler, so neither prompt applies, and leaving edit mode shouldn't
+      // prompt again either.
       if (editing.has(key)) {
         continue;
       }
@@ -545,10 +545,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 
 export function deactivate(): void {}
 
-/** Root paths of the GitButler repositories containing each workspace folder. */
 /**
- * Finds GitButler repositories on the workspace branch, with the workspace folders in each, and
- * the URIs of workspace folders whose repository is in GitButler's edit mode.
+ * Finds GitButler repositories (those with GitButler's metadata directory in their git directory),
+ * with the workspace folders in each, and the URIs of workspace folders whose repository is in
+ * GitButler's edit mode.
  */
 async function findRepositories(
   log: vscode.OutputChannel,
