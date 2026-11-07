@@ -247,7 +247,7 @@ export class Repository implements vscode.Disposable {
       this.ignoredPaths = await ignored;
       this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
       const targetBranch = await target;
-      this.githubUrl = targetBranch && githubRepoUrl(targetBranch.remoteUrl);
+      this.githubUrl = targetBranch?.remoteUrl && githubRepoUrl(targetBranch.remoteUrl);
       this.targetBranch = targetBranch?.branch;
       await this.history.update(
         this.status?.stacks.flatMap((s) => s.branches.map((b) => b.name)) ?? [],
