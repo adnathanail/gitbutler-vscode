@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import * as vscode from "vscode";
 
-// Types for the JSON emitted by `but status -f --json` (checked against but 0.22.3).
+// Types for the JSON emitted by `but status -f --json` (written against but 0.22.3, checked against 0.23.2).
 
 export type ChangeType = "added" | "modified" | "removed" | "renamed";
 
@@ -221,13 +221,7 @@ export class But {
     await this.run(["discard", "--json", "--", ...paths]);
   }
 
-  /**
-   * Opens the GitButler app on this repository.
-   *
-   * `but open` (as of 0.22.3) produces `but://app/project/...` links, which the GitButler app of
-   * the same version brings itself to the front for but doesn't navigate with. `but gui` switches
-   * the app to the project.
-   */
+  /** Opens the GitButler app on this repository, switching it to the project. */
   async gui(): Promise<void> {
     await this.run(["gui"]);
   }

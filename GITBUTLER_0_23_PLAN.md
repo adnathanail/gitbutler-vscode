@@ -145,11 +145,21 @@ Found along the way:
    - Committing with no stacks applied while the target branch (`main`) is checked out. Check
      where the commit goes and what `HEAD` becomes, since the extension relies on "with none it
      creates a branch".
-     Checked during step 4: it commits onto the target's local branch (`main`), which then shows
-     as an applied stack, rather than creating a new branch.
+     Checked during step 4 in a repository where `main` already had git commits, so was already an
+     applied stack; rechecked in step 6 that with nothing applied it creates a branch, as before.
    - The uncommitted area's CLI ID is now `@` instead of `zz`. The extension passes paths, so this
      is probably only a note, but check the `zz` ambiguity note under `but reword <branch>`.
    - Update every "0.22.3" in CLAUDE.md and `src/but.ts` once its behaviour has been rechecked.
+
+   **Done.** Rechecked every note under "Behaviour of `but` the extension relies on" against
+   0.23.2, by script or through the tests. Changed: a stack's `branches` no longer include other
+   local branches at its commits; `but open` was removed (the comment on `but gui` in
+   `src/but.ts` referred to it); the staged-index quirk didn't reproduce, as the 0.23.2 release
+   notes say it's fixed. Unchanged: `but commit` with nothing applied creates a branch, with one
+   commits to its tip, with several fails without `--branch`; `renamed` changes lack the old path;
+   new stacks go on the left. Updated the Next steps on hunks, assigning changes (`but move` still
+   only moves committed changes) and opening GitButler on a branch. The `but land` next step is
+   left as researched on 0.22.3.
 
 ## Out of scope
 
