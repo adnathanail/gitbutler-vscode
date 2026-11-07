@@ -82,6 +82,8 @@ export class TestRepo {
     // Not HEAD, which `but setup` points at a GitButler workspace commit.
     this.git("push", "-q", "origin", "refs/heads/main:refs/heads/main");
     this.git("fetch", "-q", "origin");
+    // GitButler only accepts a remote target branch that a local branch tracks.
+    this.git("branch", "-q", "--set-upstream-to=origin/main", "main");
     this.but("config", "target", "origin/main");
     if (url) {
       this.git("remote", "set-url", "origin", url);
