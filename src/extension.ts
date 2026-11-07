@@ -560,9 +560,7 @@ async function findRepositories(
       continue;
     }
     try {
-      const [root, gitDir] = (
-        await run("git", ["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-dir"], folder.uri.fsPath, log)
-      )
+      const [root, gitDir] = (await run("git", ["rev-parse", "--show-toplevel", "--absolute-git-dir"], folder.uri.fsPath, log))
         .trim()
         .split("\n");
       // Never decided by running `but`, which would make any repository a GitButler repository.
