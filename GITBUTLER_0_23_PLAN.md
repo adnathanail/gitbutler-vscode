@@ -137,6 +137,10 @@ Found along the way:
    GitButler. Updated `src/gitIntegration.ts`, the README and CLAUDE.md.
 5. **`but teardown`** only works on `gitbutler/workspace` in 0.23 and isn't needed otherwise.
    Update mentions in CLAUDE.md and test comments.
+   **Done.** The remaining mentions were already accurate after phase 2 and step 4. Checked
+   that `but teardown` recovers from a git commit on `gitbutler/workspace`: it checks out the
+   first applied branch and leaves the commit's changes staged but uncommitted, with the other
+   stacks unapplied. Recorded in CLAUDE.md and the README.
 6. **New `but` behaviour to record in CLAUDE.md**, checked against 0.23.2:
    - Committing with no stacks applied while the target branch (`main`) is checked out. Check
      where the commit goes and what `HEAD` becomes, since the extension relies on "with none it

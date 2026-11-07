@@ -57,7 +57,7 @@ The extension picks up GitButler repositories when it starts, when workspace fol
 
 ## VS Code's Git integration
 
-VS Code's built-in Git integration also shows GitButler repositories. Committing with it while several branches are applied, when GitButler checks out its `gitbutler/workspace` branch, breaks GitButler's workspace until you run `but teardown`. With one branch or none applied, GitButler picks up Git commits. When the extension finds a GitButler repository with Git integration enabled, it offers to disable it by setting `"git.enabled": false` in the workspace settings (or the folder's settings, in a multi-root workspace).
+VS Code's built-in Git integration also shows GitButler repositories. Committing with it while several branches are applied, when GitButler checks out its `gitbutler/workspace` branch, breaks GitButler's workspace until you run `but teardown`, which turns the commit back into uncommitted changes. With one branch or none applied, GitButler picks up Git commits. When the extension finds a GitButler repository with Git integration enabled, it offers to disable it by setting `"git.enabled": false` in the workspace settings (or the folder's settings, in a multi-root workspace).
 
 If a folder the extension disabled Git for stops being a GitButler repository, because its `.git/gitbutler` directory has been deleted, it offers to re-enable Git by removing that setting. If you've changed the setting yourself since, it leaves it alone.
 
