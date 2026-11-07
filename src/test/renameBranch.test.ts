@@ -100,9 +100,13 @@ describe("renaming branches", () => {
   });
 
   // Regression: renaming a branch named "zz" failed with "Ambiguous target 'zz', matches multiple
-  // items", because `but reword` doesn't always read its target as a branch name.
+  // items", because `but reword` doesn't always read its target as a branch name. `but` 0.23
+  // rejects "zz" as a target everywhere (it was the uncommitted area's old ID), so the branch is
+  // created by name and committed to by its CLI ID.
   it("renames a branch whose name `but` can't resolve", async () => {
-    repo().commit("a.txt", "a\n", "First", "zz");
+    repo().but("branch", "new", "--json", "--", "zz");
+    const cliId = repo().status().stacks[0].branches[0].cliId;
+    repo().commit("a.txt", "a\n", "First", cliId);
 
     await rename(await branchNode("zz"), "renamed");
 
