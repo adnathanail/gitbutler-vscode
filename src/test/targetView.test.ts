@@ -48,6 +48,47 @@ describe("Target Branch view", () => {
     assert.strictEqual((provider.getTreeItem(nodes[2]).iconPath as vscode.ThemeIcon).id, "git-commit");
   });
 
+  // GitButler checks out gitbutler/workspace, a merge of every stack, with two or more applied.
+  it("marks commits not in the workspace yet with several stacks applied", async () => {
+    repo().setTarget();
+    repo().commit("a.txt", "a\n", "A1", "stack-a");
+    repo().commit("b.txt", "b\n", "B1", "stack-b");
+    pushToMain({ file: "one.txt", message: "Upstream 1" });
+    const repository = await repo().repository();
+    assert.strictEqual(repository.history.currentHistoryItemRef?.name, "gitbutler/workspace");
+
+    const { nodes } = await children(repository);
+
+    const upstream = nodes.map((node) => node.kind === "commit" && node.commit.upstream);
+    assert.deepStrictEqual(upstream, [true, false]);
+  });
+
+  // With nothing applied, the target's local branch is checked out, and commits fetched since it
+  // was last updated are upstream.
+  it("marks fetched commits as not in the workspace yet with nothing applied", async () => {
+    repo().setTarget();
+    pushToMain({ file: "one.txt", message: "Upstream 1" });
+    const repository = await repo().repository();
+    assert.strictEqual(repository.history.currentHistoryItemRef?.name, "main");
+
+    const { provider, nodes } = await children(repository);
+
+    assert.deepStrictEqual(labels(provider, nodes), ["Upstream 1", "Initial commit"]);
+    const upstream = nodes.map((node) => node.kind === "commit" && node.commit.upstream);
+    assert.deepStrictEqual(upstream, [true, false]);
+  });
+
+  it("lists a local target branch's commits in a repository without remotes", async () => {
+    repo().commit("a.txt", "a\n", "A1", "stack-a");
+    const repository = await repo().repository();
+    assert.strictEqual(repository.targetBranch, "main");
+
+    const { provider, nodes } = await children(repository);
+
+    assert.deepStrictEqual(labels(provider, nodes), ["Initial commit"]);
+    assert.ok(nodes.every((node) => node.kind === "commit" && !node.commit.upstream));
+  });
+
   it("lists a commit's files, which open the commit's diff", async () => {
     repo().setTarget();
     pushToMain({ file: "one.txt", message: "Upstream 1" });
