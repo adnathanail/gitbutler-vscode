@@ -59,9 +59,26 @@ The extension picks up GitButler repositories when it starts, when workspace fol
 
 VS Code's built-in Git integration also shows GitButler repositories. Committing with it while several branches are applied, when GitButler checks out its `gitbutler/workspace` branch, breaks GitButler's workspace until you run `but teardown`, which turns the commit back into uncommitted changes. With one branch or none applied, GitButler picks up Git commits. When the extension finds a GitButler repository with Git integration enabled, it offers to disable it by setting `"git.enabled": false` in the workspace settings (or the folder's settings, in a multi-root workspace).
 
-If a folder the extension disabled Git for stops being a GitButler repository, because its `.git/gitbutler` directory has been deleted, it offers to re-enable Git by removing that setting. If you've changed the setting yourself since, it leaves it alone.
+If a folder the extension disabled Git for stops being a GitButler repository (see [Stopping using GitButler in a repository](#stopping-using-gitbutler-in-a-repository)), it offers to re-enable Git by removing that setting. If you've changed the setting yourself since, it leaves it alone.
 
 With Git integration disabled, other extensions that use VS Code's Git integration may not work in that workspace. For example, GitHub Actions (`github.vscode-github-actions`) fails to activate with "Git model not found". To use them, leave Git integration enabled, and set `gitbutlerVscode.suggestDisablingGit` to `false` to stop the suggestion.
+
+## Stopping using GitButler in a repository
+
+The extension treats a repository as a GitButler repository while it has a `.git/gitbutler` directory. Any `but` command, the GitButler app, and the extension itself create it, and nothing removes it, so to stop:
+
+1. If several branches are applied, run `but teardown`. It checks out the first applied branch, and unapplies the others. With one branch or none applied, an ordinary branch is already checked out.
+2. Close the repository in VS Code and in the GitButler app, and remove it from the app's project list. Otherwise they recreate the directory.
+3. Delete the directory: `rm -rf .git/gitbutler`. This also deletes GitButler's operation history, so `but undo` can't undo anything from before.
+4. Optionally, remove what GitButler left in git (`gitbutler/workspace` only exists if several branches were applied):
+
+   ```sh
+   git branch -D gitbutler/workspace gitbutler/target
+   git config --local --remove-section gitbutler.project
+   git config --local --unset log.excludedecoration
+   ```
+
+When you open the repository in VS Code again, the extension doesn't show it, and if it disabled VS Code's Git integration there, it offers to re-enable it.
 
 ## Settings
 
