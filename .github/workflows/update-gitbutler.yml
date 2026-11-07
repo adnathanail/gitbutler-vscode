@@ -37,7 +37,7 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/latest.json" \
             https://app.gitbutler.com/releases/release/darwin-aarch64/0.0.0
           # "<version>-<build>", from a URL such as
-          # https://releases.gitbutler.com/releases/release/0.22.3-3234/macos/aarch64/GitButler.app.tar.gz
+          # https://releases.gitbutler.com/releases/release/0.23.2-3329/macos/aarch64/GitButler.app.tar.gz
           latest=$(jq -r '.url' "$RUNNER_TEMP/latest.json" | sed -nE 's#^.*/release/([0-9]+\.[0-9]+\.[0-9]+-[0-9]+)/macos/.*$#\1#p')
           if [ -z "$latest" ]; then
             echo "::error::Couldn't find a version in the update endpoint's response"
