@@ -69,6 +69,34 @@ the global `projects.json`.
 6. Update CLAUDE.md: the "Discovery" design decision, how detection works, and the rule about
    never probing with `but`.
 
+### Phase 2 results
+
+Done. Discovery finds repositories by GitButler's metadata, with a watcher for it appearing.
+101 tests pass; the 6 failures left are the Source Control Graph and Target Branch view (phase 3).
+
+Differences from the plan above:
+
+- The marker is the `.git/gitbutler/` directory rather than `virtual_branches.toml`. The 0.23
+  binary also mentions `project_meta.toml` and keeps settings in git config
+  (`gitbutler.project.portedmeta`), so individual files inside may move between releases. The
+  watcher only watches the directory itself, since its contents change on every `but` command.
+- It uses `git rev-parse --git-dir`, not `--git-common-dir`, so linked worktrees (including
+  GitButler 0.23's own, in `~/.gitbutler-worktrees/`) aren't found, as before. Whether the
+  extension works in them is untested.
+- `but setup` creates nothing in 0.23, so the test fixtures run `but status --json` instead.
+- Edit mode still exists in 0.23 (`refs/heads/gitbutler/edit` and "Entered edit mode" are in the
+  binary, and `but resolve` enters it for conflicts), so its handling stays.
+
+Found along the way:
+
+- A repository open in the extension can't stop being a GitButler repository: the extension's
+  own `but status` recreates `.git/gitbutler/` straight away. Discovery tests remove it in edit
+  mode, when the extension has no repository refreshing it.
+- So the "re-enable Git" suggestion is now only reachable on activation, or after edit mode in a
+  repository whose metadata was deleted. This feeds into the Git integration decision in phase 3.
+- Without remotes, `but config push-remote` fails, and there's no `gb-local` remote any more.
+  The extension already handles the error.
+
 ## Phase 3: remove other assumptions about `gitbutler/workspace`
 
 1. **Source Control Graph** (`src/history.ts`): the current ref is hardcoded to

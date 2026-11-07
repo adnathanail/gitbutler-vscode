@@ -1,3 +1,4 @@
+import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { FileChange, run, Stack, Status } from "./but";
@@ -8,9 +9,13 @@ import { ChangeResource, OpenChangesTarget, OpenChangeTarget, Repository } from 
 import { AmendTarget, behindDescription, StacksNode, StacksProvider } from "./stacksView";
 import { TargetProvider } from "./targetView";
 
-const WORKSPACE_BRANCH = "gitbutler/workspace";
-/** Checked out while the GitButler app edits a commit, until it returns to the workspace branch. */
+/** Checked out while the GitButler app edits a commit, until it returns to the workspace. */
 const EDIT_BRANCH = "gitbutler/edit";
+/**
+ * GitButler's metadata directory, inside the git directory. Every `but` command creates it, so a
+ * repository counts as a GitButler repository once `but` or the GitButler app has been used in it.
+ */
+const METADATA_DIR = "gitbutler";
 
 let repositories: Repository[] = [];
 
@@ -117,16 +122,21 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     return discovering;
   };
 
-  // `but setup` and `but teardown` switch branches in a folder that's already open.
-  let headTimer: NodeJS.Timeout | undefined;
-  const onHeadChange = () => {
-    clearTimeout(headTimer);
-    headTimer = setTimeout(() => void discover(), 500);
+  // Running `but` for the first time in a folder that's already open creates GitButler's metadata,
+  // and the GitButler app's edit mode switches branches.
+  let discoverTimer: NodeJS.Timeout | undefined;
+  const onGitChange = () => {
+    clearTimeout(discoverTimer);
+    discoverTimer = setTimeout(() => void discover(), 500);
   };
   const headWatcher = vscode.workspace.createFileSystemWatcher("**/.git/HEAD");
-  headWatcher.onDidChange(onHeadChange);
-  headWatcher.onDidCreate(onHeadChange);
-  headWatcher.onDidDelete(onHeadChange);
+  headWatcher.onDidChange(onGitChange);
+  headWatcher.onDidCreate(onGitChange);
+  headWatcher.onDidDelete(onGitChange);
+  // The directory itself, not its contents, which change on every `but` command.
+  const metadataWatcher = vscode.workspace.createFileSystemWatcher(`**/.git/${METADATA_DIR}`, false, true, false);
+  metadataWatcher.onDidCreate(onGitChange);
+  metadataWatcher.onDidDelete(onGitChange);
 
   const errorEmitter = new vscode.EventEmitter<string>();
 
@@ -166,7 +176,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void discover()),
     headWatcher,
-    { dispose: () => clearTimeout(headTimer) },
+    metadataWatcher,
+    { dispose: () => clearTimeout(discoverTimer) },
     { dispose: () => repositories.forEach((r) => r.dispose()) },
 
     vscode.commands.registerCommand("gitbutlerVscode.refresh", async () => {
@@ -549,12 +560,20 @@ async function findRepositories(
       continue;
     }
     try {
-      const root = (await run("git", ["rev-parse", "--show-toplevel"], folder.uri.fsPath, log)).trim();
+      const [root, gitDir] = (
+        await run("git", ["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-dir"], folder.uri.fsPath, log)
+      )
+        .trim()
+        .split("\n");
+      // Never decided by running `but`, which would make any repository a GitButler repository.
+      if (!fs.existsSync(path.join(gitDir, METADATA_DIR))) {
+        continue;
+      }
       const branch = (await run("git", ["branch", "--show-current"], root, log)).trim();
-      if (branch === WORKSPACE_BRANCH) {
-        found.set(root, [...(found.get(root) ?? []), folder]);
-      } else if (branch === EDIT_BRANCH) {
+      if (branch === EDIT_BRANCH) {
         editing.add(folder.uri.toString());
+      } else {
+        found.set(root, [...(found.get(root) ?? []), folder]);
       }
     } catch {
       // Not a git repository.

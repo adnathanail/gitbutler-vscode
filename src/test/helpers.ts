@@ -33,7 +33,8 @@ export class TestRepo {
     fs.mkdirSync(this.root, { recursive: true });
     this.git("init", "-q");
     this.git("commit", "-q", "--allow-empty", "-m", "Initial commit");
-    this.but("setup", "--json");
+    // Makes it a GitButler repository.
+    this.but("status", "--json");
   }
 
   path(relative: string): string {
@@ -79,7 +80,7 @@ export class TestRepo {
   setTarget(url?: string): void {
     this.git("init", "-q", "--bare", this.origin);
     this.git("remote", "add", "origin", this.origin);
-    // Not HEAD, which `but setup` points at a GitButler workspace commit.
+    // Not HEAD, which may be a GitButler branch or workspace commit by now.
     this.git("push", "-q", "origin", "refs/heads/main:refs/heads/main");
     this.git("fetch", "-q", "origin");
     // GitButler only accepts a remote target branch that a local branch tracks.

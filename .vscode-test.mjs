@@ -3,8 +3,8 @@ import { execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// Every test run gets a fresh HOME, so `but setup` registers test repositories in a throwaway
-// GitButler project list instead of the real one, and git commits use a fixed identity.
+// Every test run gets a fresh HOME, so `but` registers test repositories in a throwaway GitButler
+// project list instead of the real one, and git commits use a fixed identity.
 const fixtures = path.resolve(".vscode-test/fixtures");
 const home = path.join(fixtures, "home");
 const workspace = path.join(fixtures, "workspace");
@@ -21,10 +21,11 @@ sh("git", ["config", "--global", "user.name", "Test"]);
 sh("git", ["config", "--global", "user.email", "test@example.com"]);
 sh("git", ["config", "--global", "init.defaultBranch", "main"]);
 
-// The window opens on a GitButler repository so the extension discovers it on activation.
+// The window opens on a GitButler repository so the extension discovers it on activation. Running
+// any `but` command makes a repository a GitButler repository.
 sh("git", ["init", "-q"]);
 sh("git", ["commit", "-q", "--allow-empty", "-m", "Initial commit"]);
-sh("but", ["setup", "--json"]);
+sh("but", ["status", "--json"]);
 
 export default defineConfig({
   files: "out/test/**/*.test.js",
