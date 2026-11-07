@@ -131,12 +131,18 @@ Found along the way:
    Git while a single branch is checked out under 0.23. Then either reword the message for both
    cases, or only suggest disabling Git while `gitbutler/workspace` is checked out. This is a
    decision for you once the behaviour is known.
+   **Done.** Committing with plain git works with one branch applied or none, and breaks
+   GitButler (`but status`: "GitButler mode exit required") on `gitbutler/workspace`. Decision:
+   keep suggesting for any GitButler repository, with the message saying when Git commits break
+   GitButler. Updated `src/gitIntegration.ts`, the README and CLAUDE.md.
 5. **`but teardown`** only works on `gitbutler/workspace` in 0.23 and isn't needed otherwise.
    Update mentions in CLAUDE.md and test comments.
 6. **New `but` behaviour to record in CLAUDE.md**, checked against 0.23.2:
    - Committing with no stacks applied while the target branch (`main`) is checked out. Check
      where the commit goes and what `HEAD` becomes, since the extension relies on "with none it
      creates a branch".
+     Checked during step 4: it commits onto the target's local branch (`main`), which then shows
+     as an applied stack, rather than creating a new branch.
    - The uncommitted area's CLI ID is now `@` instead of `zz`. The extension passes paths, so this
      is probably only a note, but check the `zz` ambiguity note under `but reword <branch>`.
    - Update every "0.22.3" in CLAUDE.md and `src/but.ts` once its behaviour has been rechecked.

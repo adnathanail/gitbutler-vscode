@@ -19,8 +19,10 @@ export const KEEP_DISABLED = "Keep Disabled";
 
 /**
  * Suggests turning off VS Code's built-in Git integration for a workspace folder whose repository
- * is managed by GitButler, because committing with it on the `gitbutler/workspace` branch bypasses
- * GitButler.
+ * is managed by GitButler, because committing with it while several branches are applied (on the
+ * `gitbutler/workspace` branch) breaks GitButler's workspace until `but teardown`. With one branch
+ * or none applied, Git commits are fine, but the suggestion isn't tied to how many are applied, so
+ * it doesn't appear in the middle of work when a second branch is applied.
  *
  * Does nothing if Git is already disabled for the repository, the user previously chose "Don't Ask
  * Again" for the folder, or `gitbutlerVscode.suggestDisablingGit` is off.
@@ -44,9 +46,9 @@ export async function suggestDisablingGit(
 
   const multiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
   const choice = await vscode.window.showInformationMessage(
-    `${folder.name} is managed by GitButler. Committing with VS Code's Git integration on the ` +
-      `gitbutler/workspace branch bypasses GitButler. Disable Git integration for this ` +
-      `${multiRoot ? "folder" : "workspace"}?`,
+    `${folder.name} is managed by GitButler. Committing with VS Code's Git integration while ` +
+      `several branches are applied (the gitbutler/workspace branch) breaks GitButler's workspace. ` +
+      `Disable Git integration for this ${multiRoot ? "folder" : "workspace"}?`,
     DISABLE_GIT,
     DONT_ASK_AGAIN,
   );
