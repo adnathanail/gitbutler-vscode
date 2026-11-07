@@ -78,7 +78,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - When `but` detects it's being run by a coding agent, its human-readable output may start with a notice asking the agent to install a GitButler skill. `--json` output doesn't include it.
 - Committing with `but` sometimes leaves changes staged in git's index, with the reverse change unstaged.
 - `but teardown` only runs while `gitbutler/workspace` is checked out.
-- Committing with plain git is fine with one branch applied (the commit becomes part of it) or none (the target's local branch becomes an applied stack with the commit). On `gitbutler/workspace`, a git commit on top of the workspace commit makes `but status` fail with "GitButler mode exit required: please run `but teardown` to preserve your work."
+- Committing with plain git is fine with one branch applied (the commit becomes part of it) or none (the target's local branch becomes an applied stack with the commit). On `gitbutler/workspace`, a git commit on top of the workspace commit makes `but status` fail with "GitButler mode exit required: please run `but teardown` to preserve your work." `but teardown` then checks out the first applied branch, leaving the git commit's changes staged but uncommitted there, and the other stacks unapplied.
 
 ## Design decisions
 
