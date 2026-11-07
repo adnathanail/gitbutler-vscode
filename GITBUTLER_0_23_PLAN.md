@@ -114,6 +114,9 @@ Found along the way:
 2. **Target Branch view** (`src/targetView.ts`): uses the current ref's revision as "the
    workspace" when working out which target commits are upstream. This follows from step 1, but
    needs a test with a single branch.
+   **Done.** No logic change was needed: the current ref from 3.1 is the right baseline in every
+   case. Renamed `workspace` to `current` in `src/targetView.ts`, and added tests with two stacks
+   applied, with none applied (fetched commits are upstream), and with a local target.
 3. **Comments and docs** that describe `HEAD` as the workspace commit, in `src/repository.ts`
    and `src/history.ts`, and in CLAUDE.md ("HEAD is the GitButler workspace commit", the
    Source Control Graph design decisions). `HEAD:<path>` is still the right baseline for

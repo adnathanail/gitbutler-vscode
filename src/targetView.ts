@@ -108,15 +108,17 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
     if (!repository.targetBranch) {
       return [{ kind: "message", text: "No target branch set" }];
     }
-    // Read from git by the Source Control Graph's history provider on each refresh.
+    // Read from git by the Source Control Graph's history provider on each refresh. The current
+    // ref is the workspace commit, the one applied branch, or the target's local branch with none
+    // applied, so target commits it doesn't have aren't in the workspace yet.
     const target = repository.history.currentHistoryItemRemoteRef;
-    const workspace = repository.history.currentHistoryItemRef;
+    const current = repository.history.currentHistoryItemRef;
     if (!target?.revision) {
       return [{ kind: "message", text: `${repository.targetBranch} not found`, error: true }];
     }
     let page: Page;
     try {
-      page = await this.page(repository, target.revision, workspace?.revision);
+      page = await this.page(repository, target.revision, current?.revision);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return [{ kind: "message", text: message.split("\n")[0], error: true }];
@@ -128,9 +130,9 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
     return nodes;
   }
 
-  private async page(repository: Repository, target: string, workspace: string | undefined): Promise<Page> {
+  private async page(repository: Repository, target: string, current: string | undefined): Promise<Page> {
     const limit = this.limit(repository);
-    const key = `${target} ${workspace} ${limit}`;
+    const key = `${target} ${current} ${limit}`;
     const cached = this.pages.get(repository.root);
     if (cached?.key === key) {
       return cached;
@@ -139,7 +141,7 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
     // One more than shown, to know whether there are more.
     const [log, upstream] = await Promise.all([
       git(["log", "-z", `--max-count=${limit + 1}`, `--format=${LOG_FORMAT}`, target, "--"]),
-      workspace ? git(["rev-list", target, `^${workspace}`, "--"]) : Promise.resolve(""),
+      current ? git(["rev-list", target, `^${current}`, "--"]) : Promise.resolve(""),
     ]);
     const upstreamIds = new Set(upstream.split("\n").filter(Boolean));
     const commits = log
