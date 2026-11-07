@@ -22,7 +22,7 @@ This is an unofficial extension. It isn't affiliated with or endorsed by GitButl
 - **Open File**: opens the file from the working tree. It's a button in a diff's title bar, and on each change in the Source Control panel (also in its right-click menu, for several selected changes).
 - **File status letters**: uncommitted files are marked A (added), M (modified), D (deleted) or R (renamed) in the Source Control panel, Explorer and editor tabs. These appear while VS Code's Git integration is disabled. While it's enabled, Git shows its own letters. Files under commits in the Stacks view are marked with what the commit did to them.
 - **Ignored files are dimmed** in the Explorer and editor tabs while VS Code's Git integration is disabled, as Git does while it's enabled.
-- **Git graph**: the *Graph* section of the Source Control panel shows the git history of the applied stacks, branching off the target branch (e.g. `origin/main`), with commits on the target that aren't applied yet shown as incoming. The stacks join at the top in GitButler's workspace commit, the commit the repository has checked out. Click a commit to see its changes. By default the graph only labels the workspace and the target branch. To label every branch, choose **All history item references** from the branch button in the graph's title bar, or set `scm.graph.badges` to `"all"`. The graph needs a setting described under [Installation](#installation).
+- **Git graph**: the *Graph* section of the Source Control panel shows the git history of the applied stacks, branching off the target branch (e.g. `origin/main`), with commits on the target that aren't applied yet shown as incoming. With two or more stacks applied, they join at the top in GitButler's workspace commit, the commit the repository has checked out. Click a commit to see its changes. By default the graph only labels the checked-out branch and the target branch. To label every branch, choose **All history item references** from the branch button in the graph's title bar, or set `scm.graph.badges` to `"all"`. The graph needs a setting described under [Installation](#installation).
 - **Status bar**: the applied branches, shown bottom left like the Git extension's current branch. Stacks are listed left to right as in the GitButler app, separated by `|`, with each stack's branches from top to bottom. Click it to open the repository in GitButler. If the repository is on GitHub, an entry to its left shows the repository's name and opens it on GitHub. This is the repository of the target branch (usually `origin/main`), which GitButler's GitHub integration uses.
 - **Unstage in git**: committing with GitButler sometimes leaves changes staged in git's index, with the reverse change unstaged, and GitButler can then show changes that aren't there. While anything is staged in git, a broom button appears in the Source Control title bar. It unstages everything in git (`git restore --staged`), leaving your files and GitButler's state as they are.
 - **Stage all files in git**: in the Source Control title bar's *…* menu. Stages every change in git's index (`git add --all`), for tools that only see files git tracks, such as Nix flakes. GitButler doesn't use git's index, so this doesn't affect what gets committed. The *Unstage in git* button then appears, and undoes it.
@@ -51,9 +51,9 @@ Everything else works without it. Proposed APIs can change between VS Code relea
 ## Requirements
 
 - `but` on your `PATH`, or set `gitbutlerVscode.butPath`.
-- A repository on the `gitbutler/workspace` branch (run `but setup` first).
+- A repository you've used GitButler in: any `but` command, or opening it in the GitButler app, sets it up.
 
-The extension picks up GitButler repositories when it starts, when workspace folders are added or removed, and when you run `but setup` or `but teardown` in an open folder.
+The extension picks up GitButler repositories when it starts, when workspace folders are added or removed, and when you first run `but` in an open folder.
 
 ## VS Code's Git integration
 

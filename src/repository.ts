@@ -118,7 +118,10 @@ export class Repository implements vscode.Disposable {
    * GitButler has no staging area.
    */
   private readonly staged = new Set<string>();
-  /** Identifies the commits HEAD (the workspace commit) was built from, as of the last refresh. */
+  /**
+   * Identifies the commits HEAD was built from (the merge base and every applied commit), as of
+   * the last refresh.
+   */
   private headCommits?: string;
 
   private refreshTimer?: NodeJS.Timeout;
@@ -144,7 +147,8 @@ export class Repository implements vscode.Disposable {
         if (uri.scheme !== "file") {
           return undefined;
         }
-        // HEAD is the GitButler workspace commit, which merges every applied stack.
+        // HEAD has every applied stack: it's the workspace commit merging them, the one applied
+        // branch, or the target branch with none applied.
         return RevisionFileSystemProvider.uri(root, path.relative(root, uri.fsPath), "HEAD");
       },
     };
@@ -498,7 +502,7 @@ export class Repository implements vscode.Disposable {
     };
   }
 
-  /** Opens a diff of an uncommitted change against the workspace commit. */
+  /** Opens a diff of an uncommitted change against HEAD. */
   async openUncommittedChange(change: FileChange, options?: vscode.TextDocumentShowOptions): Promise<void> {
     const fileUri = this.uri(change);
     const left = RevisionFileSystemProvider.uri(this.root, change.filePath, change.changeType === "added" ? "" : "HEAD");
