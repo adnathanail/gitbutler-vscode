@@ -22,13 +22,12 @@ describe("git's index", () => {
     assert.deepStrictEqual(repository.gitStagedPaths, ["a.txt", "b.txt"]);
   });
 
-  // b.txt is staged and then deleted, so only git's index has it.
+  // b.txt is new, so an unstage that also touched the working tree could lose it.
   it("unstages everything in git's index without changing the working tree", async () => {
     repo().commit("a.txt", "a\n", "Add a", "feature");
     repo().write("a.txt", "staged\n");
     repo().write("b.txt", "b\n");
     repo().git("add", "a.txt", "b.txt");
-    repo().remove("b.txt");
     const repository = await repo().repository();
     assert.deepStrictEqual(repository.gitStagedPaths, ["a.txt", "b.txt"]);
 
@@ -43,8 +42,8 @@ describe("git's index", () => {
     assert.strictEqual(repo().git("diff", "--cached", "--name-only"), "");
     assert.deepStrictEqual(repository.gitStagedPaths, []);
     assert.strictEqual(fs.readFileSync(repo().path("a.txt"), "utf8"), "staged\n");
-    assert.ok(!fs.existsSync(repo().path("b.txt")));
-    assert.deepStrictEqual(paths(repository.unassignedGroup), ["a.txt"]);
+    assert.strictEqual(fs.readFileSync(repo().path("b.txt"), "utf8"), "b\n");
+    assert.deepStrictEqual(paths(repository.unassignedGroup), ["a.txt", "b.txt"]);
   });
 
   it("stages every change in git's index, including new and deleted files", async () => {
