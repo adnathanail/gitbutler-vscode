@@ -22,8 +22,7 @@ describe("git's index", () => {
     assert.deepStrictEqual(repository.gitStagedPaths, ["a.txt", "b.txt"]);
   });
 
-  // GitButler reads the index for new files: b.txt, staged and then deleted, appears as a removed
-  // file although it was never committed.
+  // b.txt is staged and then deleted, so only git's index has it.
   it("unstages everything in git's index without changing the working tree", async () => {
     repo().commit("a.txt", "a\n", "Add a", "feature");
     repo().write("a.txt", "staged\n");
@@ -31,7 +30,7 @@ describe("git's index", () => {
     repo().git("add", "a.txt", "b.txt");
     repo().remove("b.txt");
     const repository = await repo().repository();
-    assert.deepStrictEqual(paths(repository.unassignedGroup), ["a.txt", "b.txt"]);
+    assert.deepStrictEqual(repository.gitStagedPaths, ["a.txt", "b.txt"]);
 
     const { errors, dispose } = collectErrors(api);
     try {

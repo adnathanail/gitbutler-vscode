@@ -24,6 +24,23 @@ Each phase ends with `npm test` passing, and a pause for review and committing b
      the failing tests listed and phase 2 straight after. I suggest committing them together, with
      phase 1 as its own commit in the same branch.
 
+### Phase 1 results
+
+Done: pinned 0.23.2-3329 (checksum checked against the downloaded archive), and fixed what the
+version bump broke directly:
+
+- `but config target --json` reports `remote_url: null` for a local target branch.
+  `src/but.ts` and `src/repository.ts` handle it.
+- `but config target origin/main` needs a local branch tracking `origin/main`, so `setTarget` in
+  `src/test/helpers.ts` sets `main`'s upstream first.
+- `zz` is rejected as a target everywhere, so the rename regression test creates its `zz` branch
+  with `but branch new` and commits to it by CLI ID.
+- A file staged and then deleted is no longer reported as `removed`, so the git index test checks
+  git's index instead.
+
+Still failing, as expected: 6 discovery tests (phase 2), and 6 Source Control Graph and Target
+Branch view tests (phase 3).
+
 ## Phase 2: detect GitButler repositories by their metadata
 
 A repository is a GitButler repository when `.git/gitbutler/virtual_branches.toml` exists. Any
@@ -58,6 +75,9 @@ the global `projects.json`.
    `refs/heads/gitbutler/workspace`. Use whatever `HEAD` points at: `gitbutler/workspace` with two
    or more stacks, otherwise the checked-out branch, or the commit itself if `HEAD` is detached.
    Update `history.test.ts`, which expects the `gitbutler/workspace` badge, to cover both cases.
+   The target can now be a local branch (e.g. `main`), but the Graph looks it up as
+   `refs/remotes/<target>`. Look it up under `refs/heads/` as well. Several Graph tests also
+   expect "GitButler Workspace Commit" in history with a single stack.
 2. **Target Branch view** (`src/targetView.ts`): uses the current ref's revision as "the
    workspace" when working out which target commits are upstream. This follows from step 1, but
    needs a test with a single branch.
