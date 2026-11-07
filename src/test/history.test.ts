@@ -62,6 +62,59 @@ describe("Source Control Graph", () => {
     assert.strictEqual(provider.currentHistoryItemRemoteRef?.name, "origin/main");
   });
 
+  // GitButler only checks out gitbutler/workspace with two or more stacks applied.
+  it("follows the applied branch when only one stack is applied", async () => {
+    repo().setTarget();
+    repo().commit("a.txt", "a\n", "A1", "stack-a");
+    const { history: provider } = await repo().repository();
+
+    const items = await history(provider);
+
+    assert.deepStrictEqual(items.map((item) => item.subject), ["A1", "Initial commit"]);
+    assert.strictEqual(provider.currentHistoryItemRef?.id, "refs/heads/stack-a");
+    assert.strictEqual(provider.currentHistoryItemRef?.revision, items[0].id);
+    // Badged once, as the current ref.
+    assert.deepStrictEqual(items[0].references?.map((r) => r.name), ["stack-a"]);
+    assert.deepStrictEqual(items[1].references?.map((r) => r.name), ["origin/main"]);
+  });
+
+  it("uses a local target branch in a repository without remotes", async () => {
+    repo().commit("a.txt", "a\n", "A1", "stack-a");
+    const { history: provider } = await repo().repository();
+
+    const items = await history(provider);
+
+    assert.strictEqual(provider.currentHistoryItemRemoteRef?.id, "refs/heads/main");
+    assert.deepStrictEqual(items.map((item) => [item.subject, item.references?.map((r) => r.name)]), [
+      ["A1", ["stack-a"]],
+      ["Initial commit", ["main"]],
+    ]);
+  });
+
+  it("follows the target branch when nothing is applied", async () => {
+    const { history: provider } = await repo().repository();
+
+    const items = await history(provider);
+
+    assert.strictEqual(provider.currentHistoryItemRef?.id, "refs/heads/main");
+    assert.strictEqual(provider.currentHistoryItemRemoteRef?.id, "refs/heads/main");
+    assert.deepStrictEqual(items.map((item) => [item.subject, item.references?.map((r) => r.name)]), [
+      ["Initial commit", ["main"]],
+    ]);
+  });
+
+  it("uses the commit as the current ref when HEAD is detached", async () => {
+    repo().commit("a.txt", "a\n", "A1", "stack-a");
+    repo().git("checkout", "-q", "--detach");
+    const { history: provider } = await repo().repository();
+
+    const items = await history(provider);
+
+    assert.strictEqual(provider.currentHistoryItemRef?.id, "HEAD");
+    assert.strictEqual(provider.currentHistoryItemRef?.revision, items[0].id);
+    assert.strictEqual(items[0].subject, "A1");
+  });
+
   it("shows commits on the target that aren't applied yet, and where they branch off", async () => {
     repo().setTarget();
     repo().commit("a.txt", "a\n", "A1", "stack-a");
@@ -90,8 +143,8 @@ describe("Source Control Graph", () => {
     const first = await history(provider, { limit: 2 });
     const rest = await history(provider, { limit: 2, skip: 2 });
 
-    assert.deepStrictEqual(first.map((item) => item.subject), ["GitButler Workspace Commit", "A3"]);
-    assert.deepStrictEqual(rest.map((item) => item.subject), ["A2", "A1"]);
+    assert.deepStrictEqual(first.map((item) => item.subject), ["A3", "A2"]);
+    assert.deepStrictEqual(rest.map((item) => item.subject), ["A1", "Initial commit"]);
   });
 
   it("finds commits by message", async () => {
@@ -114,7 +167,7 @@ describe("Source Control Graph", () => {
     fs.renameSync(repo().path("old.txt"), repo().path("renamed.txt"));
     repo().but("commit", "--json", "-m", "Change files", "--branch", "stack-a");
     const { history: provider, root } = await repo().repository();
-    const [, commit] = await history(provider, { limit: 2 });
+    const [commit] = await history(provider, { limit: 1 });
     assert.strictEqual(commit.subject, "Change files");
 
     const changes = await provider.provideHistoryItemChanges(commit.id, commit.parentIds[0]);

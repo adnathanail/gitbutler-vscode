@@ -106,6 +106,11 @@ Found along the way:
    The target can now be a local branch (e.g. `main`), but the Graph looks it up as
    `refs/remotes/<target>`. Look it up under `refs/heads/` as well. Several Graph tests also
    expect "GitButler Workspace Commit" in history with a single stack.
+   **Done.** The current ref is read with `git symbolic-ref HEAD` (falling back to `HEAD` itself
+   when detached), and the target is looked up under `refs/remotes/`, then `refs/heads/`. The
+   current ref is left out of the applied branches and the target so commits aren't badged twice.
+   New tests cover one stack applied, none applied, a local target, and a detached `HEAD`. All
+   111 tests pass, including the Target Branch view's.
 2. **Target Branch view** (`src/targetView.ts`): uses the current ref's revision as "the
    workspace" when working out which target commits are upstream. This follows from step 1, but
    needs a test with a single branch.
