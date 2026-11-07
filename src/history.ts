@@ -3,9 +3,6 @@ import { FileChange, run } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { committedChangeUri } from "./decorations";
 
-/** The branch GitButler keeps checked out, pointing at the workspace commit. */
-const WORKSPACE_REF = "refs/heads/gitbutler/workspace";
-
 /** git's empty tree, the parent side of a root commit's diff. */
 const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
@@ -53,17 +50,21 @@ export async function commitChanges(
  * The Source Control Graph for a GitButler repository: the applied stacks and the target branch,
  * as git stores them.
  *
- * Each stack is a chain of commits from the commit it's based on. GitButler's workspace commit
- * (`gitbutler/workspace`, what HEAD points at) merges the top of every stack, and is the graph's
- * current commit.
+ * Each stack is a chain of commits from the commit it's based on. With two or more stacks applied,
+ * GitButler checks out `gitbutler/workspace`, pointing at a workspace commit that merges the top of
+ * every stack. With one, it checks out that stack's branch, and with none, the target branch. The
+ * graph's current ref is whatever HEAD points at.
  *
  * Uses the proposed `scmHistoryProvider` API, which VS Code only allows for extensions under
  * development or listed in `enable-proposed-api` (in `~/.vscode/argv.json`, or a command line flag).
  */
 export class HistoryProvider implements vscode.SourceControlHistoryProvider, vscode.Disposable {
-  /** `gitbutler/workspace`, whose revision is the workspace commit. */
+  /** What HEAD points at: `gitbutler/workspace`, another branch, or a commit if HEAD is detached. */
   currentHistoryItemRef: vscode.SourceControlHistoryItemRef | undefined;
-  /** The target branch, e.g. `origin/main`. Commits on it that aren't applied show as incoming. */
+  /**
+   * The target branch, e.g. `origin/main`, or a local branch such as `main` in a repository
+   * without remotes. Commits on it that aren't applied show as incoming.
+   */
   currentHistoryItemRemoteRef: vscode.SourceControlHistoryItemRef | undefined;
   readonly currentHistoryItemBaseRef = undefined;
 
@@ -73,7 +74,7 @@ export class HistoryProvider implements vscode.SourceControlHistoryProvider, vsc
     new vscode.EventEmitter<vscode.SourceControlHistoryItemRefsChangeEvent>();
   readonly onDidChangeHistoryItemRefs = this.onDidChangeHistoryItemRefsEmitter.event;
 
-  /** The applied branches, then the target branch. */
+  /** The applied branches, then the target branch, apart from whichever is the current ref. */
   private refs: vscode.SourceControlHistoryItemRef[] = [];
 
   constructor(
@@ -88,39 +89,53 @@ export class HistoryProvider implements vscode.SourceControlHistoryProvider, vsc
 
   /**
    * Reads where the refs point, given the applied branches' names and the target branch (e.g.
-   * "origin/main"), and tells the graph about any changes.
+   * "origin/main" or "main"), and tells the graph about any changes.
    */
   async update(branchNames: string[], target: string | undefined): Promise<void> {
     const revisions = new Map<string, string>();
+    let current: vscode.SourceControlHistoryItemRef | undefined;
     try {
-      const output = await this.git(["for-each-ref", "--format=%(objectname) %(refname)", "refs/heads", "refs/remotes"]);
-      for (const line of output.split("\n")) {
+      const [refs, head, headRef] = await Promise.all([
+        this.git(["for-each-ref", "--format=%(objectname) %(refname)", "refs/heads", "refs/remotes"]),
+        this.git(["rev-parse", "--verify", "--quiet", "HEAD"]).catch(() => ""),
+        // Fails when HEAD is detached.
+        this.git(["symbolic-ref", "--quiet", "HEAD"]).catch(() => ""),
+      ]);
+      for (const line of refs.split("\n")) {
         const [revision, ref] = line.split(" ");
         if (ref) {
           revisions.set(ref, revision);
         }
       }
+      if (head.trim()) {
+        const id = headRef.trim() || "HEAD";
+        current = {
+          id,
+          name: id.replace(/^refs\/heads\//, ""),
+          revision: head.trim(),
+          icon: new vscode.ThemeIcon("target"),
+        };
+      }
     } catch {
       // Not a repository any more. The refs are cleared below.
     }
 
-    const workspace = revisions.get(WORKSPACE_REF);
-    const current: vscode.SourceControlHistoryItemRef | undefined = workspace
-      ? { id: WORKSPACE_REF, name: "gitbutler/workspace", revision: workspace, icon: new vscode.ThemeIcon("target") }
-      : undefined;
-    const targetRef = target && `refs/remotes/${target}`;
+    // `but` reports a target tracking a remote branch as the remote branch, and otherwise the
+    // local branch.
+    const targetRef = [`refs/remotes/${target}`, `refs/heads/${target}`].find((ref) => target && revisions.has(ref));
     const remote: vscode.SourceControlHistoryItemRef | undefined =
-      targetRef && revisions.has(targetRef)
+      target && targetRef
         ? {
             id: targetRef,
             name: target,
             revision: revisions.get(targetRef),
-            category: "remote branches",
-            icon: new vscode.ThemeIcon("cloud"),
+            category: targetRef.startsWith("refs/remotes/") ? "remote branches" : "branches",
+            icon: new vscode.ThemeIcon(targetRef.startsWith("refs/remotes/") ? "cloud" : "git-branch"),
           }
         : undefined;
+    // The current ref is listed separately, and may be an applied branch or the target.
     const refs: vscode.SourceControlHistoryItemRef[] = branchNames
-      .filter((name) => revisions.has(`refs/heads/${name}`))
+      .filter((name) => revisions.has(`refs/heads/${name}`) && `refs/heads/${name}` !== current?.id)
       .map((name) => ({
         id: `refs/heads/${name}`,
         name,
@@ -128,7 +143,7 @@ export class HistoryProvider implements vscode.SourceControlHistoryProvider, vsc
         category: "branches",
         icon: new vscode.ThemeIcon("git-branch"),
       }));
-    if (remote) {
+    if (remote && remote.id !== current?.id) {
       refs.push(remote);
     }
 
@@ -138,6 +153,7 @@ export class HistoryProvider implements vscode.SourceControlHistoryProvider, vsc
     const removed = [...before.values()].filter((r) => !after.has(r.id));
     const modified = [...after.values()].filter((r) => before.has(r.id) && before.get(r.id)!.revision !== r.revision);
     const currentChanged =
+      current?.id !== this.currentHistoryItemRef?.id ||
       current?.revision !== this.currentHistoryItemRef?.revision ||
       remote?.id !== this.currentHistoryItemRemoteRef?.id ||
       remote?.revision !== this.currentHistoryItemRemoteRef?.revision;
