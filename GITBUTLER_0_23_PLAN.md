@@ -121,6 +121,11 @@ Found along the way:
    and `src/history.ts`, and in CLAUDE.md ("HEAD is the GitButler workspace commit", the
    Source Control Graph design decisions). `HEAD:<path>` is still the right baseline for
    uncommitted changes, since `HEAD` is the branch tip or the workspace commit.
+   **Done.** Updated comments in `src/repository.ts`, the README's Requirements, discovery and
+   Git graph text, and CLAUDE.md's `HEAD` baseline note, `src/history.ts` row and Target Branch
+   view command. `updateHead` needed no change: it compares the merge base and applied commits,
+   which determine HEAD's contents whether or not it's a workspace commit. The Git integration
+   wording in `src/gitIntegration.ts` and the README is left for step 4.
 4. **Git integration suggestion** (`src/gitIntegration.ts`): its message says committing with Git
    "on the gitbutler/workspace branch bypasses GitButler". Check what happens when committing with
    Git while a single branch is checked out under 0.23. Then either reword the message for both

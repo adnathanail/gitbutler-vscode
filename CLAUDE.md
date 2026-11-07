@@ -21,7 +21,7 @@ npx vscode-test --grep <pattern>          # run matching tests (compile first)
 | `src/targetView.ts` | The GitButler Target Branch tree view: the target branch's commits → files. |
 | `src/decorations.ts` | `ChangeDecorationProvider`, which marks uncommitted files with A/M/D/R in the Source Control panel, Explorer and tabs. |
 | `src/content.ts` | `RevisionFileSystemProvider`, a read-only file system serving file contents at a git revision for diffs and gutter markers. |
-| `src/history.ts` | `HistoryProvider`, the Source Control Graph's history: applied stacks and the target branch, joined by the workspace commit. |
+| `src/history.ts` | `HistoryProvider`, the Source Control Graph's history: applied stacks and the target branch, joined by the workspace commit when there's more than one stack. |
 | `src/vscode.proposed.scmHistoryProvider.d.ts` | Types for the proposed `scmHistoryProvider` API, from VS Code's repository at the pinned version's tag (`src/vscode-dts/`). `src/vscode.iconPath.d.ts` declares `IconPath`, which they use but `@types/vscode` 1.90 lacks. |
 | `src/github.ts` | GitHub web URLs from git remote URLs. |
 | `src/gitIntegration.ts` | Suggestions to disable VS Code's built-in Git integration in GitButler repositories, and to re-enable it afterwards. |
@@ -48,7 +48,7 @@ Everything goes through `but … --json`:
 | Rename a branch | `but reword --json <branch CLI ID> --message=<new name>` |
 | Open in GitButler | `but gui` |
 
-Git's index is read, reset and filled with git itself: `git diff --cached --name-only -z` on each refresh, `git restore --staged -- :/`, and `git add --all -- :/`. Ignored files are listed on each refresh with `git ls-files --others --ignored --exclude-standard --directory -z`, which lists a folder whose contents are all ignored instead of its contents. Remote URLs are read on each refresh with `git config --get-regexp`, and a branch's upstream with `git for-each-ref`. Unpushed commits on partly pushed branches are read on each refresh with `git rev-list <tip> ^<remote branch>`. The Source Control Graph reads refs with `git for-each-ref` on each refresh, and history with `git log`, `git diff --name-status` and `git merge-base`. The Target Branch view reads the target's history with `git log`, which commits aren't in the workspace with `git rev-list <target> ^<workspace commit>`, and a commit's files with `git diff --name-status` against its first parent.
+Git's index is read, reset and filled with git itself: `git diff --cached --name-only -z` on each refresh, `git restore --staged -- :/`, and `git add --all -- :/`. Ignored files are listed on each refresh with `git ls-files --others --ignored --exclude-standard --directory -z`, which lists a folder whose contents are all ignored instead of its contents. Remote URLs are read on each refresh with `git config --get-regexp`, and a branch's upstream with `git for-each-ref`. Unpushed commits on partly pushed branches are read on each refresh with `git rev-list <tip> ^<remote branch>`. The Source Control Graph reads refs with `git for-each-ref` on each refresh, and history with `git log`, `git diff --name-status` and `git merge-base`. The Target Branch view reads the target's history with `git log`, which commits aren't in the workspace with `git rev-list <target> ^HEAD`, and a commit's files with `git diff --name-status` against its first parent.
 
 The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins. Behaviour of `but` the extension relies on:
 
@@ -67,7 +67,7 @@ The types in `src/but.ts` were written against `but` 0.22.3, the version CI pins
 - The JSON returned by `but commit` includes `branch` only when the commit created a new branch.
 - Errors are plain text on stderr with a non-zero exit code, even with `--json`. They often include useful hints, so the full text goes to the GitButler output channel.
 - `but status` writes to `.git/gitbutler/` (a lock file), so the repository file watcher ignores `.git/` apart from `HEAD`, `packed-refs` and `refs/`. Otherwise every status call would trigger another refresh.
-- `HEAD` is the GitButler workspace commit, a merge of every applied stack, so `HEAD:<path>` is the baseline for uncommitted changes.
+- `HEAD` has every applied stack, whether it's the workspace commit or a single branch, so `HEAD:<path>` is the baseline for uncommitted changes.
 - `renamed` changes don't report the previous path.
 - A stack's `branches` include every local branch that points at one of its commits, not only branches created with GitButler.
 - `stacks` are in the GitButler app's left-to-right order (`order` in `.git/gitbutler/virtual_branches.toml`). New stacks are added on the left.
