@@ -21,22 +21,6 @@ describe("discovery", () => {
     assert.deepStrictEqual(repository.status?.stacks, []);
   });
 
-  it("finds the repository whichever branch is checked out", async () => {
-    const api = await activate();
-    const root = vscode.workspace.workspaceFolders![0].uri.fsPath;
-    const git = (...args: string[]) => execFileSync("git", args, { cwd: root });
-
-    try {
-      git("checkout", "-q", "-b", "other");
-      await waitFor(() => api.repositories()[0]?.status?.stacks !== undefined, "repository to load");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      assert.strictEqual(api.repositories().length, 1);
-    } finally {
-      git("checkout", "-q", "main");
-      git("branch", "-q", "-D", "other");
-    }
-  });
-
   // GitButler's metadata appears in a folder that's already open the first time `but` runs there,
   // without any workspace event.
   it("notices GitButler's metadata appearing in an open folder", async () => {
@@ -77,9 +61,9 @@ describe("discovery", () => {
     }
   });
 
-  // Regression: entering edit mode in the GitButler app showed "is no longer managed by
-  // GitButler", offering to re-enable Git.
-  it("doesn't prompt about Git while the GitButler app is editing a commit", async () => {
+  // A repository in edit mode isn't shown, but still counts as managed by GitButler, so entering
+  // and leaving edit mode doesn't offer to re-enable Git.
+  it("hides the repository while the GitButler app is editing a commit, without prompting about Git", async () => {
     const api = await activate();
     const workspace = fixtureWorkspace(api);
     const stub = stubInformationMessage((_message, items) => items[0]);

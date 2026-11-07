@@ -44,8 +44,7 @@ describe("opening in GitButler", () => {
     fake = undefined;
   });
 
-  // Regression: `but open` links (`but://app/project/...`) brought GitButler to the front without
-  // switching to the project. `but gui` switches to it.
+  // `but gui` switches the GitButler app to the repository's project.
   it("runs `but gui` in the repository", async () => {
     fake = await fakeBut();
     const [repository] = api.repositories();
