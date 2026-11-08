@@ -15,8 +15,7 @@ describe("unpushed commits", () => {
     return provider.getChildren(branch).map((node) => {
       const item = provider.getTreeItem(node);
       const icon = item.iconPath as vscode.ThemeIcon;
-      // `ThemeColor.id` isn't declared in `@types/vscode` 1.90.
-      return [String(item.label), (icon.color as { id?: string } | undefined)?.id ?? "default"];
+      return [String(item.label), icon.color?.id ?? "default"];
     });
   }
 
@@ -70,8 +69,7 @@ describe("unpushed commits", () => {
     const colours = provider.getChildren(branch).map((node) => {
       const uri = provider.getTreeItem(node).resourceUri;
       const colour = uri && decorations.provideFileDecoration(uri)?.color;
-      // `ThemeColor.id` isn't declared in `@types/vscode` 1.90.
-      return (colour as { id?: string } | undefined)?.id;
+      return colour?.id;
     });
     decorations.dispose();
 

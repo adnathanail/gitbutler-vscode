@@ -29,8 +29,9 @@ sh("but", ["status", "--json"]);
 
 export default defineConfig({
   files: "out/test/**/*.test.js",
-  // The VS Code version the extension is built and tested against.
-  version: "1.139.1",
+  // The VS Code version the extension is built and tested against. VSCODE_VERSION runs the tests on
+  // another, such as the minimum in `engines.vscode`.
+  version: process.env.VSCODE_VERSION ?? "1.139.1",
   workspaceFolder: workspace,
   // With HOME replaced, macOS has no keychain to offer and blocks the window with a prompt, so use
   // Chromium's mock keychain. VS Code doesn't know that flag and would read the workspace folder

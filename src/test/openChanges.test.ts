@@ -9,7 +9,7 @@ import { TargetProvider } from "../targetView";
 import { activate, collectErrors, useTestRepo } from "./helpers";
 
 /**
- * The multi-file diff editor's input, which `@types/vscode` 1.90 doesn't declare. It only lists
+ * The multi-file diff editor's input, which `@types/vscode` doesn't declare. It only lists
  * files with both sides, so not added or deleted ones.
  */
 interface MultiDiffInput {
