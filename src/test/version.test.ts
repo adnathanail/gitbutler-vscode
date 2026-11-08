@@ -24,6 +24,9 @@ function testedWith(change: (version: [number, number, number]) => void): string
   return `but ${version.join(".")}`;
 }
 
+/** Whether a message is the version check's, rather than another of the extension's notifications. */
+const isVersionMessage = (message: string) => message.startsWith("GitButler's `but` CLI");
+
 describe("`but` version check", () => {
   const stubs: { restore(): void }[] = [];
   let info: { calls: string[] };
@@ -34,15 +37,19 @@ describe("`but` version check", () => {
   beforeEach(() => {
     const infoStub = stubInformationMessage();
     const warningStub = stubWarningMessage();
-    info = infoStub;
-    warning = warningStub;
+    // The extension's own prompts, such as the suggestion to disable Git integration for the
+    // workspace, can arrive while these stubs are in place.
+    info = { get calls() { return infoStub.calls.filter(isVersionMessage); } };
+    warning = { get calls() { return warningStub.calls.filter(isVersionMessage); } };
     errorCalls = [];
     errorButtons = [];
     const window = vscode.window as { showErrorMessage: unknown };
     const original = window.showErrorMessage;
     window.showErrorMessage = async (message: string, ...items: string[]) => {
-      errorCalls.push(message);
-      errorButtons.push(items);
+      if (isVersionMessage(message)) {
+        errorCalls.push(message);
+        errorButtons.push(items);
+      }
       return undefined;
     };
     stubs.push(infoStub, warningStub, { restore: () => (window.showErrorMessage = original) });
