@@ -1,6 +1,12 @@
 import { execFile } from "node:child_process";
 import * as vscode from "vscode";
 
+/**
+ * The `but` version the tests run against, without the build number. Kept in step with
+ * `GITBUTLER_VERSION` in `.github/actions/install-gitbutler/action.yml`, which a test checks.
+ */
+export const TESTED_BUT_VERSION = "0.23.2";
+
 // Types for the JSON emitted by `but status -f --json` (written against but 0.22.3, checked against 0.23.2).
 
 export type ChangeType = "added" | "modified" | "removed" | "renamed";
@@ -83,7 +89,8 @@ export function run(
   return new Promise((resolve, reject) => {
     execFile(command, args, { cwd, maxBuffer: 64 * 1024 * 1024 }, (err, stdout, stderr) => {
       if (err) {
-        const message = stderr.trim() || err.message;
+        const message =
+          (err as NodeJS.ErrnoException).code === "ENOENT" ? `\`${command}\` wasn't found.` : stderr.trim() || err.message;
         log.appendLine(message);
         reject(new CommandError(message));
       } else {

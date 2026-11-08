@@ -41,7 +41,7 @@ VS Code doesn't update extensions installed this way, so install new releases th
 
 ## Requirements
 
-- `but` on your `PATH`, or set `gitbutlerVscode.butPath`.
+- `but` on your `PATH`, or set `gitbutlerVscode.butPath`. The extension says when `but` is older than the version it was tested with (named above), and once per release when it's newer. Patch releases aren't mentioned.
 - A repository you've used GitButler in: any `but` command, or opening it in the GitButler app, sets it up.
 
 The extension picks up GitButler repositories when it starts, when workspace folders are added or removed, and when you first run `but` in an open folder.
