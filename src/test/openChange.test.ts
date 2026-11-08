@@ -5,6 +5,8 @@ import type { ExtensionApi } from "../extension";
 import { StacksProvider } from "../stacksView";
 import { activate, activeDiff, collectErrors, useTestRepo, waitFor } from "./helpers";
 
+const VSCODE_MINOR = Number(vscode.version.split(".")[1]);
+
 describe("opening changes", () => {
   const repo = useTestRepo();
   let api: ExtensionApi;
@@ -170,9 +172,15 @@ describe("opening changes", () => {
     await repository.openCommittedChange(commitId, { cliId: "", filePath: "image.png", changeType: "removed" });
 
     assert.strictEqual(activeDiff(), undefined, "opened a diff");
-    const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input as { uri?: vscode.Uri } | undefined;
-    assert.strictEqual(input?.uri?.scheme, RevisionFileSystemProvider.scheme);
-    assert.strictEqual(input.uri.fsPath, repo().path("image.png"));
+    const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+    assert.strictEqual(tab?.label, "image.png");
+    // Up to VS Code 1.143 the image preview is a custom editor, whose tab input has the URI. From
+    // 1.144 it's built into the workbench, and its tab input is undefined.
+    if (VSCODE_MINOR < 144) {
+      const input = tab.input as { uri?: vscode.Uri } | undefined;
+      assert.strictEqual(input?.uri?.scheme, RevisionFileSystemProvider.scheme);
+      assert.strictEqual(input.uri.fsPath, repo().path("image.png"));
+    }
   });
 
   it("still opens a deleted text file in a diff", async () => {
