@@ -5,6 +5,11 @@ import * as path from "node:path";
 
 // Every test run gets a fresh HOME, so `but` registers test repositories in a throwaway GitButler
 // project list instead of the real one, and git commits use a fixed identity.
+// The newest VS Code version the extension is tested on, raised by hand after trying a new release.
+const MAX_VSCODE_VERSION = "1.139.1";
+// The oldest, from `engines.vscode` (e.g. "^1.98.0").
+const MIN_VSCODE_VERSION = JSON.parse(fs.readFileSync("package.json", "utf8")).engines.vscode.replace(/^\^/, "");
+
 const fixtures = path.resolve(".vscode-test/fixtures");
 const home = path.join(fixtures, "home");
 const workspace = path.join(fixtures, "workspace");
@@ -29,9 +34,10 @@ sh("but", ["status", "--json"]);
 
 export default defineConfig({
   files: "out/test/**/*.test.js",
-  // The VS Code version the extension is built and tested against. VSCODE_VERSION runs the tests on
-  // another, such as the minimum in `engines.vscode`.
-  version: process.env.VSCODE_VERSION ?? "1.139.1",
+  // VSCODE_VERSION is "min", "max" (the default) or an exact version.
+  version:
+    { min: MIN_VSCODE_VERSION, max: MAX_VSCODE_VERSION }[process.env.VSCODE_VERSION ?? "max"] ??
+    process.env.VSCODE_VERSION,
   workspaceFolder: workspace,
   // With HOME replaced, macOS has no keychain to offer and blocks the window with a prompt, so use
   // Chromium's mock keychain. VS Code doesn't know that flag and would read the workspace folder

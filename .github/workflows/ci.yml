@@ -10,10 +10,16 @@ permissions:
 
 jobs:
   test:
-    name: Test
+    name: Test (VS Code ${{ matrix.vscode }})
     # The test setup is macOS-specific (it passes --use-mock-keychain because it replaces HOME), and
     # `but` comes from the GitButler app.
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest supported VS Code version (`engines.vscode`) and the newest tested one
+        # (`MAX_VSCODE_VERSION` in .vscode-test.mjs).
+        vscode: [min, max]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -25,7 +31,9 @@ jobs:
 
       - uses: ./.github/actions/install-gitbutler
 
-      # Downloads the VS Code version pinned in .vscode-test.mjs into .vscode-test/ and runs the
-      # tests in it, using real `but` and git.
+      # Downloads that VS Code version into .vscode-test/ and runs the tests in it, using real `but`
+      # and git.
       - name: Test
         run: npm test
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode }}
