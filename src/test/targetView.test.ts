@@ -55,7 +55,7 @@ describe("Target Branch view", () => {
     repo().commit("b.txt", "b\n", "B1", "stack-b");
     pushToMain({ file: "one.txt", message: "Upstream 1" });
     const repository = await repo().repository();
-    assert.strictEqual(repository.history.currentHistoryItemRef?.name, "gitbutler/workspace");
+    assert.strictEqual(repo().git("symbolic-ref", "--short", "HEAD").trim(), "gitbutler/workspace");
 
     const { nodes } = await children(repository);
 
@@ -69,7 +69,7 @@ describe("Target Branch view", () => {
     repo().setTarget();
     pushToMain({ file: "one.txt", message: "Upstream 1" });
     const repository = await repo().repository();
-    assert.strictEqual(repository.history.currentHistoryItemRef?.name, "main");
+    assert.strictEqual(repo().git("symbolic-ref", "--short", "HEAD").trim(), "main");
 
     const { provider, nodes } = await children(repository);
 
