@@ -108,17 +108,15 @@ export class TargetProvider implements vscode.TreeDataProvider<TargetNode> {
     if (!repository.targetBranch) {
       return [{ kind: "message", text: "No target branch set" }];
     }
-    // Read from git by the Source Control Graph's history provider on each refresh. The current
-    // ref is the workspace commit, the one applied branch, or the target's local branch with none
-    // applied, so target commits it doesn't have aren't in the workspace yet.
-    const target = repository.history.currentHistoryItemRemoteRef;
-    const current = repository.history.currentHistoryItemRef;
-    if (!target?.revision) {
+    // Read from git on each refresh. HEAD is the workspace commit, the one applied branch, or the
+    // target's local branch with none applied, so target commits it doesn't have aren't in the
+    // workspace yet.
+    if (!repository.targetRevision) {
       return [{ kind: "message", text: `${repository.targetBranch} not found`, error: true }];
     }
     let page: Page;
     try {
-      page = await this.page(repository, target.revision, current?.revision);
+      page = await this.page(repository, repository.targetRevision, repository.headRevision);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return [{ kind: "message", text: message.split("\n")[0], error: true }];

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { But, ChangeType, FileChange, run, Stack, Status } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { githubBranchUrl, githubRepoUrl } from "./github";
-import { commitChanges, firstParent, HistoryProvider } from "./history";
+import { changesBetween, commitChanges, firstParent } from "./history";
 
 /** An uncommitted change. */
 export interface UncommittedChange {
@@ -83,8 +83,6 @@ export class Repository implements vscode.Disposable {
   readonly sourceControl: vscode.SourceControl;
   readonly stagedGroup: vscode.SourceControlResourceGroup;
   readonly unassignedGroup: vscode.SourceControlResourceGroup;
-  /** The Source Control Graph's history. */
-  readonly history: HistoryProvider;
   private readonly stackGroups = new Map<string, vscode.SourceControlResourceGroup>();
   private readonly disposables: vscode.Disposable[] = [];
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();
@@ -113,6 +111,13 @@ export class Repository implements vscode.Disposable {
   unpushedCommits = new Set<string>();
   /** The target branch, e.g. "origin/main", as of the last refresh. Undefined if none is set. */
   targetBranch?: string;
+  /** The commit the target branch points at, as of the last refresh. Undefined if it isn't found. */
+  targetRevision?: string;
+  /**
+   * The commit HEAD points at, as of the last refresh: the workspace commit with two or more
+   * stacks applied, the applied branch with one, or the target's local branch with none.
+   */
+  headRevision?: string;
   /**
    * Paths of the staged changes, which committing is limited to. Kept by the extension, since
    * GitButler has no staging area.
@@ -153,16 +158,6 @@ export class Repository implements vscode.Disposable {
       },
     };
 
-    this.history = new HistoryProvider(root, log);
-    try {
-      this.sourceControl.historyProvider = this.history;
-    } catch {
-      // VS Code only allows the proposed API when the extension is listed in `enable-proposed-api`.
-      log.appendLine(
-        'The Source Control Graph needs "enable-proposed-api": ["adnathanail.gitbutler-vscode"] in ~/.vscode/argv.json.',
-      );
-    }
-
     // Groups are shown in the order they're created.
     this.stagedGroup = this.sourceControl.createResourceGroup("staged", "Staged Changes");
     this.stagedGroup.hideWhenEmpty = true;
@@ -183,7 +178,6 @@ export class Repository implements vscode.Disposable {
       this.stagedGroup,
       this.unassignedGroup,
       watcher,
-      this.history,
       this.onDidChangeEmitter,
       // Changes made outside VS Code (e.g. in the GitButler app) may not all produce file events.
       vscode.window.onDidChangeWindowState((state) => state.focused && this.scheduleRefresh()),
@@ -253,10 +247,13 @@ export class Repository implements vscode.Disposable {
       const targetBranch = await target;
       this.githubUrl = targetBranch?.remoteUrl && githubRepoUrl(targetBranch.remoteUrl);
       this.targetBranch = targetBranch?.branch;
-      await this.history.update(
-        this.status?.stacks.flatMap((s) => s.branches.map((b) => b.name)) ?? [],
-        this.targetBranch,
-      );
+      [this.targetRevision, this.headRevision] = await Promise.all([
+        this.readTargetRevision(this.targetBranch),
+        run("git", ["rev-parse", "--verify", "--quiet", "HEAD"], this.root, this.log).then(
+          (out) => out.trim() || undefined,
+          () => undefined,
+        ),
+      ]);
       this.updateHead();
       this.updateResources();
       this.updateStatusBar();
@@ -398,6 +395,34 @@ export class Repository implements vscode.Disposable {
   }
 
   /** Makes editors showing files at HEAD reload them when the applied commits change. */
+  /**
+   * The commit the target branch points at. `but` reports a target tracking a remote branch as the
+   * remote branch (e.g. "origin/main"), and otherwise the local branch (e.g. "main").
+   */
+  private async readTargetRevision(target: string | undefined): Promise<string | undefined> {
+    if (!target) {
+      return undefined;
+    }
+    try {
+      const refs = new Map(
+        (
+          await run(
+            "git",
+            ["for-each-ref", "--format=%(refname) %(objectname)", `refs/remotes/${target}`, `refs/heads/${target}`],
+            this.root,
+            this.log,
+          )
+        )
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => line.split(" ") as [string, string]),
+      );
+      return refs.get(`refs/remotes/${target}`) ?? refs.get(`refs/heads/${target}`);
+    } catch {
+      return undefined;
+    }
+  }
+
   private updateHead(): void {
     if (!this.status) {
       return;
@@ -550,12 +575,8 @@ export class Repository implements vscode.Disposable {
    */
   async openChanges(oldestCommitId: string, newestCommitId: string, title: string): Promise<void> {
     const parent = await firstParent(this.root, this.log, oldestCommitId);
-    const changes = await this.history.provideHistoryItemChanges(newestCommitId, parent);
-    await vscode.commands.executeCommand(
-      "vscode.changes",
-      title,
-      changes.map((change) => [change.uri, change.originalUri, change.modifiedUri]),
-    );
+    const changes = await changesBetween(this.root, this.log, parent, newestCommitId);
+    await vscode.commands.executeCommand("vscode.changes", title, changes);
   }
 
   dispose(): void {

@@ -20,9 +20,6 @@
     "onStartupFinished"
   ],
   "main": "./out/extension.js",
-  "enabledApiProposals": [
-    "scmHistoryProvider"
-  ],
   "contributes": {
     "configuration": {
       "title": "GitButler",
