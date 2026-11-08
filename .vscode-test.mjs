@@ -6,7 +6,7 @@ import * as path from "node:path";
 // Every test run gets a fresh HOME, so `but` registers test repositories in a throwaway GitButler
 // project list instead of the real one, and git commits use a fixed identity.
 // The newest VS Code version the extension is tested on, raised by hand after trying a new release.
-const MAX_VSCODE_VERSION = "1.139.1";
+const MAX_VSCODE_VERSION = "1.144.0";
 // The oldest, from `engines.vscode` (e.g. "^1.98.0").
 const MIN_VSCODE_VERSION = JSON.parse(fs.readFileSync("package.json", "utf8")).engines.vscode.replace(/^\^/, "");
 
