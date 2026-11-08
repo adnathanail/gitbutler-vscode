@@ -8,6 +8,7 @@ import { isGitDisabledByExtension, suggestDisablingGit, suggestReenablingGit } f
 import { ChangeResource, OpenChangesTarget, OpenChangeTarget, Repository } from "./repository";
 import { AmendTarget, behindDescription, StacksNode, StacksProvider } from "./stacksView";
 import { TargetProvider } from "./targetView";
+import { checkButVersion } from "./version";
 
 /** Checked out while the GitButler app edits a commit, until it returns to the workspace. */
 const EDIT_BRANCH = "gitbutler/edit";
@@ -111,8 +112,21 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     }
 
     await vscode.commands.executeCommand("setContext", "gitbutlerVscode.hasRepository", repositories.length > 0);
+    checkVersion();
     onRepositoryChange();
     await Promise.all(added.map((r) => r.refresh()));
+  };
+
+  // The `but` path whose version was last checked. Checked once there's a GitButler repository,
+  // so windows without one never run `but`, and again whenever the path changes.
+  let versionCheckedFor: string | undefined;
+  const checkVersion = () => {
+    const butPath = vscode.workspace.getConfiguration("gitbutlerVscode").get<string>("butPath") || "but";
+    if (repositories.length > 0 && butPath !== versionCheckedFor) {
+      versionCheckedFor = butPath;
+      // Not awaited: notifications stay until the user responds.
+      void checkButVersion(butPath, log, context.globalState);
+    }
   };
 
   // Runs one discovery at a time, so overlapping triggers can't create duplicate repositories.
@@ -175,6 +189,11 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       isCaseSensitive: true,
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void discover()),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("gitbutlerVscode.butPath")) {
+        checkVersion();
+      }
+    }),
     headWatcher,
     metadataWatcher,
     { dispose: () => clearTimeout(discoverTimer) },

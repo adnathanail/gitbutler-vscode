@@ -77,8 +77,10 @@ jobs:
             -e "s/^( *GITBUTLER_VERSION: *).*$/\1$LATEST/" \
             -e "s/^( *GITBUTLER_SHA256: *).*$/\1$sha256/" \
             .github/actions/install-gitbutler/action.yml
-          # The README names the version the tests run against, without the build number.
+          # The README and the extension's version check name the version the tests run against,
+          # without the build number.
           sed -i '' "s/GitButler ${CURRENT%-*}/GitButler ${LATEST%-*}/" README.md
+          sed -i '' -E "s/^(export const TESTED_BUT_VERSION = )\".*\";$/\1\"${LATEST%-*}\";/" src/but.ts
           git diff
 
       - uses: actions/setup-node@v7
@@ -114,7 +116,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$BRANCH"
-          git add .github/actions/install-gitbutler/action.yml README.md
+          git add .github/actions/install-gitbutler/action.yml README.md src/but.ts
           git commit -m "Update GitButler to $version"
           git push origin "$BRANCH"
 

@@ -2,6 +2,7 @@ import * as assert from "node:assert";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { TESTED_BUT_VERSION } from "../but";
 import type { ExtensionApi } from "../extension";
 import { activate, collectErrors } from "./helpers";
 
@@ -16,7 +17,8 @@ async function fakeBut(
   const record = `${script}.log`;
   fs.writeFileSync(
     script,
-    `#!/bin/sh\npwd > '${record}'\nprintf '%s\\n' "$@" >> '${record}'\n` +
+    // Answers the version check made when `butPath` changes, without recording it.
+    `#!/bin/sh\n[ "$1" = --version ] && { echo 'but ${TESTED_BUT_VERSION}'; exit 0; }\npwd > '${record}'\nprintf '%s\\n' "$@" >> '${record}'\n` +
       (exitCode ? `echo 'Error: GitButler is not installed' >&2\nexit ${exitCode}\n` : ""),
     { mode: 0o755 },
   );
