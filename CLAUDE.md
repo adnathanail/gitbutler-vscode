@@ -8,7 +8,7 @@ An unofficial VS Code extension that shows GitButler stacks and commits changes 
 npm run compile                           # build to out/
 npm test                                  # compile, then run all tests in a downloaded VS Code
 npx vscode-test --grep <pattern>          # run matching tests (compile first)
-VSCODE_VERSION=1.98.0 npx vscode-test     # run the tests on another VS Code version (compile first)
+VSCODE_VERSION=min npx vscode-test        # run the tests on the oldest supported VS Code (compile first)
 ```
 
 ## Layout
@@ -120,7 +120,9 @@ Tests run inside a separate copy of VS Code (downloaded to `.vscode-test/`) usin
 - **The window opens on a fresh GitButler repository** in `.vscode-test/fixtures/workspace`, for discovery tests. Discovery tests take its GitButler metadata away by moving `.git/gitbutler/` aside while in edit mode, since outside it the extension's own `but status` calls recreate the directory.
 - **Stored workspace state is cleared** before each run, because the fixture workspace has the same path every time.
 
-Versions are pinned, because this is a personal project used with one setup: VS Code in `.vscode-test.mjs` (`version`), and GitButler in `.github/actions/install-gitbutler/action.yml` (used by CI and releases), which downloads the app from GitButler's release URL, checks its SHA-256 and links `but` from it, as Homebrew does (Homebrew only installs the latest version). The URL format and checksums are in Homebrew's cask (`Casks/g/gitbutler.rb`). When upgrading, update both, the versions named in the README, and the version in "How the extension uses `but`". The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
+Versions are pinned, because this is a personal project used with one setup: the newest tested VS Code (`MAX_VSCODE_VERSION` in `.vscode-test.mjs`), and GitButler in `.github/actions/install-gitbutler/action.yml` (used by CI and releases), which downloads the app from GitButler's release URL, checks its SHA-256 and links `but` from it, as Homebrew does (Homebrew only installs the latest version). The URL format and checksums are in Homebrew's cask (`Casks/g/gitbutler.rb`). When upgrading, update both, the versions named in the README, and the version in "How the extension uses `but`". The setup is macOS-specific (the mock keychain flag, and `but` from the app), so there's no Linux job.
+
+VS Code is tested at both ends of the supported range. `VSCODE_VERSION` picks the version tests run on: `min` (`engines.vscode`), `max` (`MAX_VSCODE_VERSION`, the default) or an exact version. CI runs both `min` and `max`, while releases and the GitButler update workflow test `max`. `engines.vscode` only takes a minimum, which VS Code checks before installing, so newer versions aren't blocked, and `MAX_VSCODE_VERSION` is raised by hand once a new one passes.
 
 The minimum VS Code version (`engines.vscode`, and `@types/vscode` to match) is 1.98, the oldest the tests pass on reliably. On older versions, VS Code's file watcher process sometimes crashes during a test run (`fileWatcher … crashed` in the run's `main.log`) and isn't restarted, so no file events arrive afterwards and the discovery tests time out. Before 1.98, the multi-file diff editor's tab title also says "(1 files)", which the tests don't expect. When raising the minimum, check the tests pass on it several times in a row with `VSCODE_VERSION`, keeping the machine awake (`caffeinate -i` on macOS), since sleeping makes tests time out.
 
