@@ -55,10 +55,29 @@ export interface Stack {
   branches: Branch[];
 }
 
+/** A linked worktree, as `but status` reports it. */
+export interface WorktreeStatus {
+  cliId: string;
+  /** Matches `Worktree.name` from `but worktree list`. */
+  name: string;
+  /** The branch checked out in it, e.g. "refs/heads/feature/a". */
+  reference: string | null;
+  base: {
+    commitId: string;
+    inWorkspace: boolean;
+    behind: number;
+  };
+  uncommittedChanges: FileChange[];
+  /** Top of the stack first, as in `Stack`. */
+  branches: Branch[];
+}
+
 export interface Status {
   /** Uncommitted changes not assigned to any stack. */
   uncommittedChanges: FileChange[];
   stacks: Stack[];
+  /** Active linked worktrees (0.23). Left out when there are none. */
+  worktrees?: WorktreeStatus[];
   mergeBase: Commit;
   upstreamState: {
     behind: number;
@@ -75,6 +94,17 @@ export interface Review {
   unitSymbol: string;
   title: string;
   draft: boolean;
+}
+
+/** A linked worktree GitButler manages, from `but worktree list --json`. */
+export interface Worktree {
+  /** Short ID used by `but`. */
+  id: string;
+  name: string;
+  /** The branch checked out in it, e.g. "refs/heads/feature/a". */
+  refName: string;
+  /** Absolute path of its checkout. */
+  path: string;
 }
 
 export class CommandError extends Error {}
@@ -226,6 +256,15 @@ export class But {
       return;
     }
     await this.run(["discard", "--json", "--", ...paths]);
+  }
+
+  /**
+   * The repository's active linked worktrees, most recently updated first. Archived ones are
+   * hidden from the workspace, so they're left out.
+   */
+  async worktrees(): Promise<Worktree[]> {
+    const output: { active: Worktree[] } = JSON.parse(await this.run(["worktree", "list", "--json"]));
+    return output.active;
   }
 
   /** Opens the GitButler app on this repository, switching it to the project. */

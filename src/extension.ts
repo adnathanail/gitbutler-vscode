@@ -9,6 +9,7 @@ import { ChangeResource, OpenChangesTarget, OpenChangeTarget, Repository } from 
 import { AmendTarget, behindDescription, StacksNode, StacksProvider } from "./stacksView";
 import { TargetProvider } from "./targetView";
 import { checkButVersion } from "./version";
+import { WorktreesNode, WorktreesProvider } from "./worktreesView";
 
 /** Checked out while the GitButler app edits a commit, until it returns to the workspace. */
 const EDIT_BRANCH = "gitbutler/edit";
@@ -41,6 +42,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const target = new TargetProvider(() => repositories, log);
   const targetView = vscode.window.createTreeView("gitbutlerVscode.target", { treeDataProvider: target });
   target.view = targetView;
+  const worktrees = new WorktreesProvider(() => repositories);
+  const worktreesView = vscode.window.createTreeView("gitbutlerVscode.worktrees", { treeDataProvider: worktrees });
+  worktrees.view = worktreesView;
 
   const revisions = new RevisionFileSystemProvider();
   const decorations = new ChangeDecorationProvider(() => repositories);
@@ -48,6 +52,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const onRepositoryChange = () => {
     stacks.refresh();
     target.refresh();
+    worktrees.refresh();
     decorations.refresh();
     stacksView.description = repositories.length === 1 ? behindDescription(repositories[0]) : undefined;
     targetView.description = repositories.length === 1 ? repositories[0].targetBranch : undefined;
@@ -181,6 +186,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     errorEmitter,
     stacksView,
     targetView,
+    worktreesView,
     revisions,
     decorations,
     vscode.window.registerFileDecorationProvider(decorations),
@@ -203,6 +209,19 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       await Promise.all(repositories.map((r) => r.refresh()));
     }),
 
+    // Invoked from a worktree in the Worktrees view.
+    vscode.commands.registerCommand("gitbutlerVscode.openWorktree", async (node?: WorktreesNode) => {
+      if (node?.kind !== "worktree") {
+        return;
+      }
+      try {
+        await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(node.worktree.path), {
+          forceNewWindow: true,
+        });
+      } catch (err) {
+        showError(err);
+      }
+    }),
     // Invoked by clicking Load More… at the end of the Target Branch view.
     vscode.commands.registerCommand("gitbutlerVscode.loadMoreTargetHistory", (repository: Repository) =>
       target.loadMore(repository),

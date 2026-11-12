@@ -144,6 +144,12 @@
         "icon": "$(go-to-file)"
       },
       {
+        "command": "gitbutlerVscode.openWorktree",
+        "title": "Open in New Window",
+        "category": "GitButler",
+        "icon": "$(vscode)"
+      },
+      {
         "command": "gitbutlerVscode.openInGitButler",
         "title": "Open in GitButler",
         "category": "GitButler",
@@ -223,6 +229,12 @@
           "when": "gitbutlerVscode.hasRepository"
         },
         {
+          "id": "gitbutlerVscode.worktrees",
+          "name": "GitButler Worktrees",
+          "icon": "resources/gitbutler-light.svg",
+          "when": "gitbutlerVscode.hasRepository"
+        },
+        {
           "id": "gitbutlerVscode.target",
           "name": "GitButler Target Branch",
           "icon": "resources/gitbutler-light.svg",
@@ -281,6 +293,10 @@
           "when": "false"
         },
         {
+          "command": "gitbutlerVscode.openWorktree",
+          "when": "false"
+        },
+        {
           "command": "gitbutlerVscode.openFile",
           "when": "isInDiffEditor && (resourceScheme == gitbutler-vscode-rev || resourceScheme == file && gitbutlerVscode.hasRepository && (!config.git.enabled || git.missing || gitOpenRepositoryCount == 0))"
         },
@@ -325,6 +341,11 @@
           "command": "gitbutlerVscode.refresh",
           "when": "view == gitbutlerVscode.target",
           "group": "navigation"
+        },
+        {
+          "command": "gitbutlerVscode.refresh",
+          "when": "view == gitbutlerVscode.worktrees",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -367,6 +388,16 @@
           "command": "gitbutlerVscode.renameBranch",
           "when": "view == gitbutlerVscode.stacks && viewItem =~ /^branch\\b/",
           "group": "1_modification"
+        },
+        {
+          "command": "gitbutlerVscode.openWorktree",
+          "when": "view == gitbutlerVscode.worktrees && viewItem == worktree",
+          "group": "inline"
+        },
+        {
+          "command": "gitbutlerVscode.openWorktree",
+          "when": "view == gitbutlerVscode.worktrees && viewItem == worktree",
+          "group": "0_open"
         }
       ],
       "editor/title": [
