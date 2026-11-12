@@ -5,7 +5,7 @@ import * as vscode from "vscode";
  * The `but` version the tests run against, without the build number. Kept in step with
  * `GITBUTLER_VERSION` in `.github/actions/install-gitbutler/action.yml`, which a test checks.
  */
-export const TESTED_BUT_VERSION = "0.23.2";
+export const TESTED_BUT_VERSION = "0.23.3";
 
 // Types for the JSON emitted by `but status -f --json` (written against but 0.22.3, checked against 0.23.2).
 
