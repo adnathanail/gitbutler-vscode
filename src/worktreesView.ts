@@ -115,8 +115,14 @@ export class WorktreesProvider implements vscode.TreeDataProvider<WorktreesNode>
         item.contextValue = "worktree";
         return item;
       }
-      default:
-        return this.stacks.getTreeItem(node);
+      default: {
+        const item = this.stacks.getTreeItem(node);
+        // Branches start folded, unlike in the Stacks view, so a worktree's commits don't fill the view.
+        if (node.kind === "branch" && item.collapsibleState === vscode.TreeItemCollapsibleState.Expanded) {
+          item.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+        }
+        return item;
+      }
     }
   }
 }
