@@ -8,7 +8,8 @@ export type StacksNode =
   | { kind: "repository"; repository: Repository }
   | { kind: "message"; text: string; error?: boolean }
   | { kind: "stack"; repository: Repository; stack: Stack }
-  | { kind: "branch"; repository: Repository; branch: Branch; stack: Stack }
+  /** `stack` is absent for a worktree's branch. */
+  | { kind: "branch"; repository: Repository; branch: Branch; stack?: Stack }
   | { kind: "commit"; repository: Repository; commit: Commit }
   | { kind: "file"; repository: Repository; commit: Commit; change: FileChange };
 

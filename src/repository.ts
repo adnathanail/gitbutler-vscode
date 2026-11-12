@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import { But, ChangeType, FileChange, run, Stack, Status } from "./but";
+import { Branch, But, ChangeType, FileChange, run, Stack, Status, Worktree } from "./but";
 import { RevisionFileSystemProvider } from "./content";
 import { githubBranchUrl, githubRepoUrl } from "./github";
 import { changesBetween, commitChanges, firstParent } from "./history";
@@ -118,6 +118,8 @@ export class Repository implements vscode.Disposable {
    * stacks applied, the applied branch with one, or the target's local branch with none.
    */
   headRevision?: string;
+  /** The active linked worktrees, as of the last refresh. */
+  worktrees: Worktree[] = [];
   /**
    * Paths of the staged changes, which committing is limited to. Kept by the extension, since
    * GitButler has no staging area.
@@ -234,19 +236,24 @@ export class Repository implements vscode.Disposable {
       const ignored = this.readIgnored();
       const remotes = this.readRemotes();
       const target = this.but.target().catch(() => undefined);
+      const worktrees = this.but.worktrees().catch(() => []);
       try {
         this.status = await this.but.status();
         this.error = undefined;
       } catch (err) {
         this.error = err instanceof Error ? err.message : String(err);
       }
-      this.unpushedCommits = await this.readUnpushed(this.status?.stacks ?? []);
+      this.unpushedCommits = await this.readUnpushed([
+        ...(this.status?.stacks ?? []).flatMap((stack) => stack.branches),
+        ...(this.status?.worktrees ?? []).flatMap((worktree) => worktree.branches),
+      ]);
       this.gitStagedPaths = await gitStaged;
       this.ignoredPaths = await ignored;
       this.hasGitHubRemote = [...(await remotes).values()].some((url) => githubRepoUrl(url));
       const targetBranch = await target;
       this.githubUrl = targetBranch?.remoteUrl && githubRepoUrl(targetBranch.remoteUrl);
       this.targetBranch = targetBranch?.branch;
+      this.worktrees = await worktrees;
       [this.targetRevision, this.headRevision] = await Promise.all([
         this.readTargetRevision(this.targetBranch),
         run("git", ["rev-parse", "--verify", "--quiet", "HEAD"], this.root, this.log).then(
@@ -305,14 +312,13 @@ export class Repository implements vscode.Disposable {
   }
 
   /**
-   * Commits on applied branches that their remote branch doesn't have. `but` only reports whether
+   * Commits on applied branches and worktrees' branches that their remote branch doesn't have. `but` only reports whether
    * a branch has anything to push, so for partly pushed branches this asks git. The remote branch
    * is found as GitButler does (see `githubBranchUrl`).
    */
-  private async readUnpushed(stacks: Stack[]): Promise<Set<string>> {
+  private async readUnpushed(branches: Branch[]): Promise<Set<string>> {
     const unpushed = new Set<string>();
     let pushRemote: Promise<string> | undefined;
-    const branches = stacks.flatMap((stack) => stack.branches);
     await Promise.all(
       branches.map(async (branch) => {
         const ids = branch.commits.map((commit) => commit.commitId);
