@@ -53,6 +53,8 @@ describe("Worktrees view", () => {
 
     assert.deepStrictEqual(labels(provider, [branch, commit, ...files]), ["feature-c", "Add c", "c.txt"]);
     assert.strictEqual(provider.getTreeItem(branch).contextValue, "branch");
+    // Folded, unlike in the Stacks view.
+    assert.strictEqual(provider.getTreeItem(branch).collapsibleState, vscode.TreeItemCollapsibleState.Collapsed);
     // Unpushed, so greyed out, as on applied branches.
     assert.ok(commit.kind === "commit" && repository.unpushedCommits.has(commit.commit.commitId));
   });
